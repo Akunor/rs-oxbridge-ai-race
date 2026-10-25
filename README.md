@@ -7,14 +7,28 @@ name, address, amount, page/invoice text). Without a `PAY` verdict it must not p
 Trust is an **out-of-band payee directory** (onboarding), not a badge on a merchant site. A scam site
 can always self-attest; lookalikes of known brands and “we changed our wallet” swaps still **BLOCK**.
 
-**Judge path:** open [`/demo`](/demo) — left pane visualizes the agent’s journey through coffee or
-invoice flows; right pane shows PayeeGuard scoring each signal live.
+**Judge path:** open [`/demo`](/demo) — left pane visualizes the agent’s journey through coffee,
+invoice, or invoice-email flows; right pane shows PayeeGuard scoring each signal live. On **PAY**
+the demo auto-completes payment; on **BLOCK** the attempt is flagged and the agent does not sign.
+
+### How decisions are made
+
+PayeeGuard is a **weighted checklist** (`lib/guard/engine.ts`), not a calibrated fraud probability:
+
+| Layer | What | Confidence |
+| --- | --- | --- |
+| **Hard BLOCK** | Invalid address; lookalike of a directory wallet | Very high when the directory is correct |
+| **Strong fail** | Payee name in directory but wallet ≠ registered; prompt-injection to the agent | High for directory mismatch |
+| **Soft HOLD band** | Unverified wallet, change-claim / pressure / secrecy, new wallet, unusual amount; optional Jev System-1 soft points | Medium — heuristic / additive |
+| **PAY** | Score &lt; 30 and no hard block | Confident relative to directory + observed text only |
+
+Thresholds: PAY 0–29 · HOLD 30–59 · BLOCK 60+. Optional `JEV_API_KEY` adds a capped soft-risk check that **cannot** clear a hard BLOCK and cannot alone authorize PAY.
 
 Built on the Superteam Agent Studio starter (modules still work; see below).
 
 | Page | What it is |
 | --- | --- |
-| `/demo` | **Primary demo** — agent journey + PayeeGuard evaluator (coffee & invoice scenarios) |
+| `/demo` | **Primary demo** — agent journey + PayeeGuard evaluator (coffee, invoice, email) |
 | `/` | Product home → links to `/demo` |
 | `/shop`, `/fake-shop`, `/checkout/[genuine\|fake\|injected\|new]` | Standalone coffee storefront + attacks |
 | `/invoice`, `/invoice/[genuine\|changed-details]` | Standalone AP inbox + invoice pay |

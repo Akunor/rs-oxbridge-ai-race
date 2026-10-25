@@ -4,8 +4,9 @@ import { diffAddress, isLookalike, isSolanaAddress, sharedEnds, shortAddress } f
 import { walletHistory } from "./chain";
 import { proofOfControl } from "./confirm";
 import { scanText } from "./injection";
+import { jevSoftRisk, JEV_SOFT_CAP } from "./jev";
 import { allMerchants, merchantByName, type Merchant } from "./registry";
-import { THRESHOLDS, verdictFor, type GuardCheck, type GuardResult, type MerchantView, type PaymentRequest } from "./types";
+import { THRESHOLDS, verdictFor, type GuardCheck, type GuardResult, type JevSoftView, type MerchantView, type PaymentRequest } from "./types";
 
 // PayeeGuard's risk engine: rules plus AI. Each check adds risk points; the total decides
 //   0–29 → PAY · 30–59 → HOLD (ask the payee to prove wallet ownership) · 60+ → BLOCK.
@@ -21,6 +22,8 @@ export const POINTS = {
   payeeChangeClaim: 25,
   pressure: 15,
   unusualAmount: 20,
+  /** Cap for optional Jev soft_risk — cannot alone force BLOCK; never clears hard BLOCK. */
+  softRiskCap: JEV_SOFT_CAP,
 } as const;
 
 export interface EvaluateOptions {
@@ -50,11 +53,12 @@ export async function evaluatePayment(req: PaymentRequest, opts: EvaluateOptions
   const exact = merchants.find((m) => m.address === request.address);
   const claimed = merchantByName(merchants, request.payeeName);
 
-  // Kick off the slow look-ups together.
-  const [proof, history, findings] = await Promise.all([
+  // Kick off the slow look-ups together (Jev is optional and fail-open).
+  const [proof, history, findings, jev] = await Promise.all([
     proofOfControl(request.address, req.attestations ?? []),
     opts.useChain === false ? Promise.resolve(null) : walletHistory(request.address, Math.min(4000, opts.timeoutMs ?? 4000)).catch(() => null),
     scanText(request.messageText, { useAi, timeoutMs: opts.timeoutMs ? Math.max(3000, opts.timeoutMs) : 9000, payeeName: request.payeeName }),
+    jevSoftRisk(request, Math.min(2500, opts.timeoutMs ?? 2500)),
   ]);
 
   // 1. Address poisoning: does this address imitate a verified payee's wallet?
@@ -151,12 +155,80 @@ export async function evaluatePayment(req: PaymentRequest, opts: EvaluateOptions
     checks.push({ id: "amount", label: "Normal amount", status: ref ? "pass" : "skip", points: 0, detail: ref ? `In line with ${ref.name}'s typical orders.` : "No payment history to compare against." });
   }
 
+  // 7. Optional Jev System-1 soft risk (additive; never overrides hard BLOCK).
+  const softPoints = Math.min(POINTS.softRiskCap, Math.max(0, jev.points));
+  if (!jev.used) {
+    checks.push({
+      id: "soft_risk",
+      label: "Jev soft risk",
+      status: "skip",
+      points: 0,
+      detail: jev.detail,
+    });
+  } else if (softPoints > 0) {
+    checks.push({
+      id: "soft_risk",
+      label: "Jev soft risk",
+      status: "warn",
+      points: softPoints,
+      detail: jev.detail,
+      evidence: {
+        diversionProb: jev.diversionProb,
+        fraudScore: jev.fraudScore,
+        pattern: jev.pattern,
+        patternConfidence: jev.patternConfidence,
+        cappedAt: POINTS.softRiskCap,
+      },
+    });
+  } else {
+    checks.push({
+      id: "soft_risk",
+      label: "Jev soft risk",
+      status: "pass",
+      points: 0,
+      detail: jev.detail,
+      evidence: {
+        diversionProb: jev.diversionProb,
+        fraudScore: jev.fraudScore,
+        pattern: jev.pattern,
+        patternConfidence: jev.patternConfidence,
+      },
+    });
+  }
+
   const matched = imitated ?? claimed ?? exact;
-  return finish({ request, mode, checks, started, aiUsed: findings.ai, matchedMerchant: matched ? view(matched, matched === exact ? verified : Boolean(matched.verifiedVia)) : undefined });
+  const jevView: JevSoftView | undefined = jev.used
+    ? {
+        used: true,
+        diversionProb: jev.diversionProb,
+        fraudScore: jev.fraudScore,
+        pattern: jev.pattern,
+        patternConfidence: jev.patternConfidence,
+        ms: jev.ms,
+      }
+    : undefined;
+  return finish({
+    request,
+    mode,
+    checks,
+    started,
+    aiUsed: findings.ai,
+    matchedMerchant: matched ? view(matched, matched === exact ? verified : Boolean(matched.verifiedVia)) : undefined,
+    jev: jevView,
+  });
 }
 
-function finish(p: { request: GuardResult["request"]; mode: "enforce" | "advisory"; checks: GuardCheck[]; started: number; aiUsed: boolean; matchedMerchant?: MerchantView }): GuardResult {
+function finish(p: {
+  request: GuardResult["request"];
+  mode: "enforce" | "advisory";
+  checks: GuardCheck[];
+  started: number;
+  aiUsed: boolean;
+  matchedMerchant?: MerchantView;
+  jev?: JevSoftView;
+}): GuardResult {
   const score = Math.min(100, p.checks.reduce((a, c) => a + c.points, 0));
+  // Hard floors: lookalike / invalid address always BLOCK regardless of soft scores (Jev cannot clear).
   const hardBlock = p.checks.some((c) => c.status === "fail" && (c.id === "lookalike" || c.id === "address_format"));
   const verdict = hardBlock ? "BLOCK" : verdictFor(score);
   const reasons = p.checks.filter((c) => c.status === "fail" || c.status === "warn");
@@ -183,6 +255,7 @@ function finish(p: { request: GuardResult["request"]; mode: "enforce" | "advisor
     evaluatedAt: new Date().toISOString(),
     ms: Date.now() - p.started,
     ai: { used: p.aiUsed, model: p.aiUsed ? aiModel(aiProvider()) : "rules" },
+    ...(p.jev ? { jev: p.jev } : {}),
   };
 }
 

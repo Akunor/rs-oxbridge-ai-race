@@ -7,15 +7,22 @@ export function SiteWindow({
   url,
   agentRole,
   stepCaption,
+  flagged,
   children,
 }: {
   url: string;
   agentRole: string;
   stepCaption: string;
+  flagged?: boolean;
   children: ReactNode;
 }) {
   return (
-    <section className="site-window" aria-label="Agent journey through the site">
+    <section className={`site-window${flagged ? " site-window--flagged" : ""}`} aria-label="Agent journey through the site">
+      {flagged && (
+        <div className="site-window-flag" role="alert">
+          Payment attempt flagged by PayeeGuard · agent will not sign
+        </div>
+      )}
       <div className="site-window-chrome">
         <span className="site-window-dots" aria-hidden="true">
           <i />

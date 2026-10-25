@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { CheckResultJson } from "@/components/payeeguard/VerdictCard";
 import { DEMO_SCENARIO_META, type DemoScenario, type DemoScenarioId, type ObserveKey } from "@/lib/demo/types";
 import { CoffeeSceneView } from "./CoffeeScene";
+import { EmailSceneView } from "./EmailScene";
 import { GuardPanel } from "./GuardPanel";
 import { InvoiceSceneView } from "./InvoiceScene";
 import { SiteWindow } from "./SiteWindow";
@@ -24,12 +25,14 @@ export function DemoCockpit({ initialId = "coffee-genuine" }: { initialId?: Demo
   const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(true);
   const playRef = useRef(false);
+  const autoPayRef = useRef(false);
 
   const load = useCallback(async (id: DemoScenarioId) => {
     setLoading(true);
     setError(null);
     setPlaying(false);
     playRef.current = false;
+    autoPayRef.current = false;
     try {
       const res = await fetch(`/api/demo/scenario?id=${encodeURIComponent(id)}`, { cache: "no-store" });
       const json = await res.json();
@@ -60,16 +63,15 @@ export function DemoCockpit({ initialId = "coffee-genuine" }: { initialId?: Demo
     return next;
   }, []);
 
-  const runGuard = useCallback(async (s: DemoScenario) => {
-    setPhase("checking");
+  const pay = useCallback(async (s: DemoScenario) => {
+    if (autoPayRef.current) return;
+    autoPayRef.current = true;
+    setPaying(true);
     setError(null);
-    setResult(null);
-    setRevealedCheckCount(0);
-    setPaidSignature(null);
     try {
-      const res = await fetch("/api/guard/check", {
+      const res = await fetch("/api/guard/pay", {
         method: "POST",
-        headers: { "content-type": "application/json", "x-payeeguard-source": "demo" },
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({
           payeeName: s.checkout.payeeName,
           address: s.checkout.address,
@@ -79,24 +81,62 @@ export function DemoCockpit({ initialId = "coffee-genuine" }: { initialId?: Demo
         }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.error?.message ?? `Check failed (${res.status})`);
-      setResult(json as CheckResultJson);
-      setPhase("verdict");
-      // Stagger check reveals
-      const total = (json as CheckResultJson).checks?.length ?? 0;
-      for (let i = 1; i <= total; i++) {
-        await new Promise((r) => setTimeout(r, 180));
-        setRevealedCheckCount(i);
-      }
+      if (!res.ok) throw new Error(json?.error?.message ?? `Payment failed (${res.status})`);
+      setPaidSignature(json.signature ?? null);
+      setResult(json);
+      setPhase("paid");
     } catch (err) {
       setError((err as Error).message);
-      setPhase("journey");
+      autoPayRef.current = false;
+    } finally {
+      setPaying(false);
     }
   }, []);
 
+  const runGuard = useCallback(
+    async (s: DemoScenario) => {
+      setPhase("checking");
+      setError(null);
+      setResult(null);
+      setRevealedCheckCount(0);
+      setPaidSignature(null);
+      autoPayRef.current = false;
+      try {
+        const res = await fetch("/api/guard/check", {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-payeeguard-source": "demo" },
+          body: JSON.stringify({
+            payeeName: s.checkout.payeeName,
+            address: s.checkout.address,
+            amountUsdc: s.checkout.amountUsdc,
+            reference: `PayeeGuard order ${s.checkout.reference}`,
+            messageText: s.checkout.messageText,
+          }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error?.message ?? `Check failed (${res.status})`);
+        const checked = json as CheckResultJson;
+        setResult(checked);
+        setPhase("verdict");
+        const total = checked.checks?.length ?? 0;
+        for (let i = 1; i <= total; i++) {
+          await new Promise((r) => setTimeout(r, 160));
+          setRevealedCheckCount(i);
+        }
+        if (checked.verdict === "PAY") {
+          await pay(s);
+        }
+      } catch (err) {
+        setError((err as Error).message);
+        setPhase("journey");
+      }
+    },
+    [pay],
+  );
+
   const advance = useCallback(async () => {
-    if (!scenario || phase === "checking") return;
-    if (phase === "verdict" || phase === "paid") return;
+    if (!scenario || phase === "checking" || phase === "paid") return;
+    if (phase === "verdict") return;
 
     const step = scenario.steps[stepIndex];
     if (!step) return;
@@ -118,7 +158,6 @@ export function DemoCockpit({ initialId = "coffee-genuine" }: { initialId?: Demo
     if (!scenario || playing) return;
     setPlaying(true);
     playRef.current = true;
-    // Reset if already finished
     if (phase !== "journey") {
       setStepIndex(0);
       setRevealed(new Set());
@@ -126,6 +165,7 @@ export function DemoCockpit({ initialId = "coffee-genuine" }: { initialId?: Demo
       setResult(null);
       setRevealedCheckCount(0);
       setPaidSignature(null);
+      autoPayRef.current = false;
       await new Promise((r) => setTimeout(r, 200));
     }
 
@@ -161,45 +201,19 @@ export function DemoCockpit({ initialId = "coffee-genuine" }: { initialId?: Demo
     if (scenario) void load(scenario.id);
   };
 
-  async function pay() {
-    if (!scenario || !result || result.verdict !== "PAY") return;
-    setPaying(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/guard/pay", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          payeeName: scenario.checkout.payeeName,
-          address: scenario.checkout.address,
-          amountUsdc: scenario.checkout.amountUsdc,
-          reference: `PayeeGuard order ${scenario.checkout.reference}`,
-          messageText: scenario.checkout.messageText,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error?.message ?? `Payment failed (${res.status})`);
-      setPaidSignature(json.signature ?? null);
-      setResult(json);
-      setPhase("paid");
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setPaying(false);
-    }
-  }
-
   const step = scenario?.steps[Math.min(stepIndex, (scenario?.steps.length ?? 1) - 1)];
   const focus = step?.focus ?? "storefront";
   const stepCaption = scenario
     ? `Step ${stepIndex + 1}/${scenario.steps.length} · ${step?.caption ?? ""}`
     : "Loading…";
+  const blocked = result?.verdict === "BLOCK" && (phase === "verdict" || phase === "paid");
 
   return (
-    <div className="demo-cockpit">
+    <div className={`demo-cockpit${blocked ? " demo-cockpit--blocked" : ""}`}>
       <div className="demo-trust">
-        PayeeGuard sits beside the agent, not the merchant. Directory trust is out-of-band. A site badge or self-signed
-        wallet cannot authorize payment to a lookalike of a known brand.
+        Hard gates (lookalike / directory wallet mismatch) are high confidence. Soft text and optional Jev scores add
+        risk points but cannot clear a hard BLOCK. Site badges are not trust. PAY auto-completes the agent payment; BLOCK
+        flags the attempt and refuses to sign.
       </div>
 
       <div className="demo-toolbar">
@@ -242,9 +256,16 @@ export function DemoCockpit({ initialId = "coffee-genuine" }: { initialId?: Demo
           {loading || !scenario ? (
             <div className="empty">Loading agent scenario…</div>
           ) : (
-            <SiteWindow url={scenario.scene.url} agentRole={scenario.agentRole} stepCaption={stepCaption}>
+            <SiteWindow
+              url={scenario.scene.url}
+              agentRole={scenario.agentRole}
+              stepCaption={stepCaption}
+              flagged={blocked}
+            >
               {scenario.scene.kind === "coffee" ? (
                 <CoffeeSceneView scene={scenario.scene} focus={focus} />
+              ) : scenario.scene.kind === "email" ? (
+                <EmailSceneView scene={scenario.scene} focus={focus} />
               ) : (
                 <InvoiceSceneView scene={scenario.scene} focus={focus} />
               )}
@@ -263,7 +284,6 @@ export function DemoCockpit({ initialId = "coffee-genuine" }: { initialId?: Demo
               error={error}
               paying={paying}
               paidSignature={paidSignature}
-              onPay={() => void pay()}
             />
           ) : (
             <div className="empty">{error ?? "Select a scenario"}</div>

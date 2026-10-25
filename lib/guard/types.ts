@@ -20,13 +20,31 @@ export interface PaymentRequest {
 }
 
 export interface GuardCheck {
-  id: "address_format" | "lookalike" | "payee_match" | "confirmation_of_payee" | "wallet_history" | "injection" | "amount";
+  id:
+    | "address_format"
+    | "lookalike"
+    | "payee_match"
+    | "confirmation_of_payee"
+    | "wallet_history"
+    | "injection"
+    | "amount"
+    | "soft_risk";
   label: string;
   status: CheckStatus;
   /** Risk points this check added (0 when it passed). */
   points: number;
   detail: string;
   evidence?: Record<string, unknown>;
+}
+
+/** Optional Jev System-1 soft probabilities surfaced in the inspector. */
+export interface JevSoftView {
+  used: boolean;
+  diversionProb?: number;
+  fraudScore?: number;
+  pattern?: string;
+  patternConfidence?: number;
+  ms?: number;
 }
 
 export interface MerchantView {
@@ -50,6 +68,8 @@ export interface GuardResult {
   evaluatedAt: string;
   ms: number;
   ai: { used: boolean; model: string };
+  /** Soft System-1 probabilities when JEV_API_KEY is set; never overrides hard BLOCK. */
+  jev?: JevSoftView;
 }
 
 export interface Receipt {

@@ -18,21 +18,19 @@ export function GuardPanel({
   error,
   paying,
   paidSignature,
-  onPay,
 }: {
   expect: DemoExpect;
   revealed: Set<ObserveKey>;
   signals: ObserveSignal[];
   phase: "journey" | "checking" | "verdict" | "paid";
   result: CheckResultJson | null;
-  /** How many checks to show (for staggered reveal). */
   revealedCheckCount: number;
   error: string | null;
   paying: boolean;
   paidSignature: string | null;
-  onPay: () => void;
 }) {
   const visibleSignals = signals.filter((s) => revealed.has(s.key));
+  const jev = result?.jev as JevView | undefined;
 
   return (
     <section className="guard-panel" aria-label="PayeeGuard payment gate">
@@ -48,7 +46,8 @@ export function GuardPanel({
 
       <div className="guard-panel-body">
         <p className="small muted" style={{ margin: 0 }}>
-          Trust is the out-of-band payee directory — not a badge on the site. The agent must get PAY before it signs.
+          Hard gates (lookalike / directory mismatch) are high confidence. Soft text signals are scored heuristics
+          {jev ? " plus Jev System-1 probabilities" : ""} — never enough alone to approve a blocked lookalike.
         </p>
 
         <div className="stack" style={{ gap: 8 }}>
@@ -77,6 +76,22 @@ export function GuardPanel({
 
         {result && phase !== "checking" && (
           <div className="stack" style={{ gap: 12 }}>
+            {result.verdict === "BLOCK" && (
+              <div className="act-banner act-banner--block" role="alert">
+                Payment attempt flagged · agent will not sign
+              </div>
+            )}
+            {result.verdict === "HOLD" && (
+              <div className="act-banner act-banner--hold" role="status">
+                Hold · agent will not pay until the unknown payee is confirmed out-of-band
+              </div>
+            )}
+            {(phase === "paid" || (result.verdict === "PAY" && paying)) && (
+              <div className="act-banner act-banner--pay" role="status">
+                {phase === "paid" ? "Safe · agent payment allowed" : "Safe · agent is completing payment…"}
+              </div>
+            )}
+
             <div className={`verdict verdict--${result.verdict}`} role="status">
               <div className="verdict-head">
                 <span className="verdict-badge">
@@ -87,6 +102,7 @@ export function GuardPanel({
                   <span className="small muted">
                     Risk {result.score}/100 · {(result.ms / 1000).toFixed(1)}s ·{" "}
                     {result.ai.used ? `rules + AI (${result.ai.model})` : "rules"}
+                    {jev ? " + Jev" : ""}
                   </span>
                 </div>
               </div>
@@ -112,25 +128,25 @@ export function GuardPanel({
                     genuine={String(result.checks.find((c) => c.id === "lookalike")!.evidence!.genuine)}
                   />
                 )}
+                {jev && <JevSoftView jev={jev} />}
               </div>
             </div>
 
             <AgentOutcome verdict={result.verdict}>
               {phase === "paid" && paidSignature ? (
                 <div className="notice notice--ok">
-                  Agent paid on Solana devnet. Tx <ExplorerLink signature={paidSignature} />
+                  Agent paid automatically on Solana devnet. Tx <ExplorerLink signature={paidSignature} />
                 </div>
-              ) : result.verdict === "PAY" ? (
-                <button className="btn btn--primary" onClick={onPay} disabled={paying}>
-                  {paying ? "Agent is paying…" : "Let agent complete payment"}
-                </button>
+              ) : result.verdict === "PAY" && paying ? (
+                <div className="notice notice--ok">Verdict PAY · completing transfer automatically…</div>
+              ) : result.verdict === "PAY" && phase === "verdict" && !paidSignature ? (
+                <div className="notice notice--ok">Verdict PAY · agent will pay without a second confirm.</div>
               ) : result.verdict === "HOLD" ? (
                 <span className="small">
-                  Agent will not pay until an unknown payee proves wallet control (out-of-band / verify flow) — a site
-                  badge is not enough.
+                  Unknown payee path only. A site badge cannot clear HOLD. Known-brand lookalikes still hard-BLOCK.
                 </span>
               ) : (
-                <span className="tag tag--fault">Agent refuses to pay · no funds moved</span>
+                <span className="small">No funds moved. The agent harness must refuse to sign.</span>
               )}
             </AgentOutcome>
           </div>
@@ -140,12 +156,53 @@ export function GuardPanel({
   );
 }
 
+type JevView = {
+  used: boolean;
+  diversionProb?: number;
+  fraudScore?: number;
+  pattern?: string;
+  patternConfidence?: number;
+};
+
+function JevSoftView({ jev }: { jev: JevView }) {
+  if (!jev.used) return null;
+  return (
+    <div className="demo-panel">
+      <span className="label">Jev System-1 · soft risk (additive)</span>
+      <dl className="kv">
+        {jev.diversionProb != null && (
+          <>
+            <dt>Diversion P</dt>
+            <dd className="mono">{(jev.diversionProb * 100).toFixed(1)}%</dd>
+          </>
+        )}
+        {jev.fraudScore != null && (
+          <>
+            <dt>Fraud score</dt>
+            <dd className="mono">{jev.fraudScore.toFixed(2)}</dd>
+          </>
+        )}
+        {jev.pattern && (
+          <>
+            <dt>Pattern</dt>
+            <dd>
+              {jev.pattern}
+              {jev.patternConfidence != null ? ` · conf ${(jev.patternConfidence * 100).toFixed(0)}%` : ""}
+            </dd>
+          </>
+        )}
+      </dl>
+      <span className="small muted">Cannot override a hard BLOCK (e.g. lookalike of a directory wallet).</span>
+    </div>
+  );
+}
+
 function AgentOutcome({ verdict, children }: { verdict: string; children: ReactNode }) {
   return (
     <div className="demo-panel">
       <span className="label">Agent decision</span>
       <p style={{ margin: "0 0 10px", fontFamily: "var(--display)", fontWeight: 700, fontSize: 16 }}>
-        {verdict === "PAY" ? "Agent may pay" : verdict === "HOLD" ? "Agent holds" : "Agent blocks payment"}
+        {verdict === "PAY" ? "Agent pays" : verdict === "HOLD" ? "Agent holds" : "Agent blocks payment"}
       </p>
       {children}
     </div>

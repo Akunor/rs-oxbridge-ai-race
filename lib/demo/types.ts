@@ -5,9 +5,11 @@ export type DemoScenarioId =
   | "coffee-fake"
   | "coffee-injected"
   | "invoice-genuine"
-  | "invoice-changed";
+  | "invoice-changed"
+  | "invoice-email"
+  | "invoice-email-scam";
 
-export type DemoKind = "coffee" | "invoice";
+export type DemoKind = "coffee" | "invoice" | "email";
 export type DemoExpect = "PAY" | "HOLD" | "BLOCK";
 
 /** Regions the left window can highlight as the agent focuses. */
@@ -20,7 +22,9 @@ export type FocusRegion =
   | "badge"
   | "inbox"
   | "invoice-body"
-  | "urgency";
+  | "urgency"
+  | "email"
+  | "link";
 
 export type ObserveKey =
   | "payeeName"
@@ -29,7 +33,10 @@ export type ObserveKey =
   | "reference"
   | "visibleText"
   | "hiddenText"
-  | "siteBadge";
+  | "siteBadge"
+  | "emailFrom"
+  | "emailSubject"
+  | "emailBody";
 
 export interface ObserveSignal {
   key: ObserveKey;
@@ -78,6 +85,27 @@ export interface InvoiceScene {
   siteBadge?: string;
 }
 
+export interface EmailScene {
+  kind: "email";
+  /** Browser chrome URL while on the inbox / linked page. */
+  url: string;
+  from: string;
+  subject: string;
+  bodyPreview: string;
+  linkLabel: string;
+  linkUrl: string;
+  vendorName: string;
+  invoiceNumber: string;
+  issueDate: string;
+  dueDate: string;
+  lines: { description: string; qty: number; unitUsdc: number }[];
+  amountUsdc: number;
+  address: string;
+  reference: string;
+  pageNote?: string;
+  siteBadge?: string;
+}
+
 export interface CheckoutPayload {
   payeeName: string;
   address: string;
@@ -96,7 +124,7 @@ export interface DemoScenario {
   agentRole: string;
   steps: JourneyStep[];
   signals: ObserveSignal[];
-  scene: CoffeeScene | InvoiceScene;
+  scene: CoffeeScene | InvoiceScene | EmailScene;
   checkout: CheckoutPayload;
 }
 
@@ -106,4 +134,6 @@ export const DEMO_SCENARIO_META: { id: DemoScenarioId; title: string; kind: Demo
   { id: "coffee-injected", title: "Coffee · injection", kind: "coffee" },
   { id: "invoice-genuine", title: "Invoice · genuine", kind: "invoice" },
   { id: "invoice-changed", title: "Invoice · changed details", kind: "invoice" },
+  { id: "invoice-email", title: "Email · genuine invoice", kind: "email" },
+  { id: "invoice-email-scam", title: "Email · invoice scam", kind: "email" },
 ];
