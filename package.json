@@ -14,7 +14,7 @@
     "keygen": "tsx scripts/keygen.ts",
     "wallets": "tsx scripts/wallets.ts",
     "test:transfer": "tsx --test scripts/test-transfer.ts",
-    "test:race": "tsx --test scripts/test-race.ts",
+    "test:race": "tsx --conditions=react-server --test scripts/test-race.ts",
     "race:try": "tsx scripts/race-try.ts",
     "test:spending": "tsx --test scripts/test-spending.ts scripts/test-spending-x402.ts",
     "pay": "tsx --conditions=react-server scripts/pay.ts",
