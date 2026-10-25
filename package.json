@@ -7,9 +7,7 @@
     "node": "20.x"
   },
   "scripts": {
-    "predev": "node restore-folders.mjs",
     "dev": "next dev",
-    "prebuild": "node restore-folders.mjs",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
