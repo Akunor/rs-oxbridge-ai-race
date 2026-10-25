@@ -7,12 +7,13 @@ const FONTS =
   "https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap";
 
 export const metadata: Metadata = {
-  title: "PayeeGuard · Verify the payee before an agent pays",
+  title: "PayeeGuard · Payment gate for autonomous agents",
   description:
-    "PayeeGuard checks who an AI agent is paying before money moves: address poisoning, payee swaps and prompt-injected payment requests.",
+    "PayeeGuard sits beside a shopping or AP agent and decides whether it may pay: lookalike wallets, payee swaps, and prompt-injected requests.",
 };
 
 const links = [
+  { href: "/demo", label: "Demo" },
   { href: "/shop", label: "Coffee shop" },
   { href: "/invoice", label: "Invoices" },
   { href: "/receipts", label: "Receipts" },
@@ -33,7 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="header-inner">
             <Link href="/" className="wordmark">
               <b>PayeeGuard</b>
-              <span>confirmation of payee</span>
+              <span>agent payment gate</span>
             </Link>
             <Nav links={links} />
           </div>

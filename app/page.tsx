@@ -5,63 +5,57 @@ export default function Home() {
   return (
     <>
       <section className="hero">
-        <span className="eyebrow">Confirmation of payee · for AI agents</span>
+        <span className="eyebrow">Payment gate · for autonomous agents</span>
         <h1 className="display">PayeeGuard</h1>
         <p className="lead">
-          Verify the payee before an agent can send money. Stops lookalike wallets, “we changed our details” swaps, and
-          instructions planted for AI.
+          A shopping or AP agent acting for a user or organisation must clear PayeeGuard before it can send money.
+          Directory trust is out-of-band — a site badge cannot authorize a lookalike payee.
         </p>
         <div className="hero-ctas">
-          <Link className="btn btn--primary" href="/shop">
-            Try the coffee shop
+          <Link className="btn btn--primary" href="/demo">
+            Open agent demo
           </Link>
-          <Link className="btn btn--secondary" href="/invoice">
-            Try a B2B invoice
+          <Link className="btn btn--secondary" href="/developers">
+            Agent API
           </Link>
         </div>
       </section>
 
-      <div className="demo-grid reveal">
-        <Link href="/shop" className="demo-card">
-          <span className="demo-kicker">Demo · consumer</span>
-          <b>Coffee shop</b>
-          <p>
-            A verified storefront, a copycat with a poisoned address, hidden agent instructions, and a new merchant that
-            must prove wallet ownership.
-          </p>
-          <span className="go">Open storefront →</span>
-        </Link>
-        <Link href="/invoice" className="demo-card">
-          <span className="demo-kicker">Demo · accounts payable</span>
-          <b>Incoming invoices</b>
-          <p>
-            An agent pays a vendor invoice. Compare a genuine remittance with a changed-details scam that tries to reroute
-            funds.
-          </p>
-          <span className="go">Open AP inbox →</span>
-        </Link>
-      </div>
-
-      <Module label="How it works" className="reveal-late">
+      <Module label="What you are watching in the demo" className="reveal">
         <div className="flow">
           <div>
-            <b>1 · Request</b>
-            An invoice, checkout page, or message asks an agent to pay.
+            <b>Left · agent journey</b>
+            The agent moves through a coffee shop or invoice flow. Visualized as a website so humans can follow.
           </div>
           <div>
-            <b>2 · Risk check</b>
-            Rules plus AI: lookalike address, name mismatch, new wallet, unusual amount, hidden instructions.
+            <b>Right · payment gate</b>
+            PayeeGuard consumes what the agent observed and scores lookalikes, name mismatches, and injection.
           </div>
           <div>
-            <b>3 · Confirm</b>
-            Unknown payees prove ownership by signing a one-time code with their wallet.
+            <b>Outcome</b>
+            The agent pays only on PAY. HOLD or BLOCK means no signature.
           </div>
           <div>
-            <b>4 · Verdict</b>
-            PAY, HOLD, or BLOCK — with reasons and a tamper-evident receipt.
+            <b>Not the product</b>
+            Merchant self-verify on a page is not trust. Fraudulent sites can badge themselves.
           </div>
         </div>
       </Module>
+
+      <div className="demo-grid reveal-late">
+        <Link href="/demo" className="demo-card">
+          <span className="demo-kicker">Primary</span>
+          <b>Agent demo cockpit</b>
+          <p>Side-by-side agent journey and live PayeeGuard evaluation across coffee and invoice attack scenarios.</p>
+          <span className="go">Open demo →</span>
+        </Link>
+        <Link href="/shop" className="demo-card">
+          <span className="demo-kicker">Standalone</span>
+          <b>Coffee & invoices</b>
+          <p>Full storefront and AP pages if you want to poke around outside the cockpit.</p>
+          <span className="go">Browse sites →</span>
+        </Link>
+      </div>
     </>
   );
 }

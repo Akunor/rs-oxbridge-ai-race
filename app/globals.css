@@ -349,3 +349,84 @@ a.invoice-row:hover { border-color: var(--signal); text-decoration: none; color:
   background: var(--signal); margin-right: 8px; box-shadow: 0 0 0 3px rgba(13, 122, 122, 0.18);
   vertical-align: middle;
 }
+
+/* ---------- Agent demo cockpit ---------- */
+.page:has(.demo-page) { max-width: 1280px; }
+.demo-page { display: flex; flex-direction: column; gap: 16px; }
+.demo-cockpit { display: flex; flex-direction: column; gap: 14px; }
+.demo-trust {
+  padding: 12px 16px; border-radius: var(--radius);
+  background: var(--ink); color: #c5d0da; font-size: 13.5px; line-height: 1.5;
+  border: 1px solid var(--ink);
+}
+.demo-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.demo-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.demo-tab {
+  height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--hairline);
+  background: #fff; color: var(--ink-2); font: 600 12.5px var(--sans); cursor: pointer;
+}
+.demo-tab:hover { border-color: var(--soft); color: var(--ink); }
+.demo-tab--active { background: var(--ink); color: #fff; border-color: var(--ink); }
+.demo-tab:disabled { opacity: 0.5; cursor: not-allowed; }
+.demo-split { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.95fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .demo-split { grid-template-columns: 1fr; } }
+
+.site-window {
+  background: #fff; border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden;
+  box-shadow: var(--shadow); display: flex; flex-direction: column; min-height: 420px;
+}
+.site-window-chrome {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 12px; background: #1c242d; color: #9aa6b2;
+}
+.site-window-dots { display: flex; gap: 5px; }
+.site-window-dots i { width: 8px; height: 8px; border-radius: 50%; background: #4a5560; display: block; }
+.site-window-dots i:first-child { background: #c2361f; }
+.site-window-dots i:nth-child(2) { background: #c98a00; }
+.site-window-dots i:nth-child(3) { background: #0f9a6a; }
+.site-window-url {
+  flex: 1; min-width: 140px; padding: 6px 10px; border-radius: 6px;
+  background: #12181f; color: #d4dde5; font-size: 11.5px;
+}
+.site-window-role { font: 600 10.5px var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: #7dd3d3; }
+.site-window-body { padding: 14px; display: flex; flex-direction: column; gap: 12px; background: var(--diagram); flex: 1; }
+.site-window-caption {
+  display: flex; flex-direction: column; gap: 2px; padding: 10px 14px;
+  border-top: 1px solid var(--hairline); background: #fff; font-size: 13.5px; color: var(--ink-2);
+}
+
+.demo-scene { display: flex; flex-direction: column; gap: 10px; }
+.demo-region {
+  border-radius: 8px; transition: box-shadow 200ms ease, outline-color 200ms ease, transform 200ms ease;
+  outline: 2px solid transparent;
+}
+.demo-region--focus {
+  outline-color: var(--signal);
+  box-shadow: 0 0 0 4px rgba(13, 122, 122, 0.18);
+  transform: translateY(-1px);
+}
+.demo-panel {
+  padding: 12px 14px; border-radius: 8px; background: #fff; border: 1px solid var(--hairline);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.demo-panel--danger { border-color: #f0b4b4; background: var(--fault-tint); }
+
+.guard-panel {
+  background: #fff; border: 1px solid var(--hairline); border-radius: 12px; box-shadow: var(--shadow);
+  overflow: hidden; min-height: 420px; display: flex; flex-direction: column;
+}
+.guard-panel-head {
+  display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap;
+  padding: 16px 16px 12px; border-bottom: 1px solid var(--hairline); background: var(--strip);
+}
+.guard-panel-title { margin: 4px 0 0; font-family: var(--display); font-size: 22px; letter-spacing: -0.03em; }
+.guard-panel-body { padding: 16px; display: flex; flex-direction: column; gap: 16px; flex: 1; }
+.signal-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.signal {
+  padding: 10px 12px; border-radius: 8px; border: 1px solid var(--hairline); background: var(--diagram);
+  display: flex; flex-direction: column; gap: 4px; animation: rise 280ms ease both;
+}
+.signal--untrusted { opacity: 0.72; border-style: dashed; }
+.signal-label { font: 600 10.5px var(--mono); letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.signal-value { font-size: 12.5px; line-height: 1.45; overflow-wrap: anywhere; max-height: 4.5em; overflow: hidden; }
+.check-reveal { animation: rise 240ms ease both; }

@@ -12,9 +12,10 @@ export default async function VerifyPage({
   const returnTo = sp.return && sp.return.startsWith("/") && !sp.return.startsWith("//") ? sp.return : undefined;
   return (
     <>
-      <PageHeader eyebrow="Confirmation of Payee" title={<>Prove you own this wallet.</>}>
-        Sign a one-time code with your wallet. It&apos;s free, moves no money, and only the real owner can do it. Once
-        signed, agents using PayeeGuard can pay you without a hold.
+      <PageHeader eyebrow="HOLD path · unknown payees" title={<>Prove you own this wallet.</>}>
+        For payees not yet in the directory: sign a one-time code with the wallet. This does not let a scam site
+        impersonate a known brand — lookalikes of onboarded merchants still block. Known vendors are trusted via
+        out-of-band onboarding, not a badge on their page.
       </PageHeader>
       <VerifyWallet initialName={sp.name ?? ""} initialAddress={sp.address ?? ""} returnTo={returnTo} />
     </>

@@ -14,7 +14,7 @@ export interface PaymentRequest {
   /** Any text the agent read alongside the request: invoice, email, product page, chat message. */
   messageText?: string;
   /** Where the request came from (shown on receipts). */
-  source?: "checkout" | "api" | "race" | "plugin";
+  source?: "checkout" | "api" | "race" | "plugin" | "demo";
   /** Signed "this merchant proved wallet ownership" tokens the payer's browser holds. */
   attestations?: string[];
 }

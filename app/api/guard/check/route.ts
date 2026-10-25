@@ -13,7 +13,8 @@ export const maxDuration = 30;
 export async function POST(request: Request) {
   const parsed = parsePaymentRequest(await readJson(request), "api");
   if (!parsed.ok) return json({ error: { code: "invalid_input", message: parsed.error } }, 400, true);
-  const source = request.headers.get("x-payeeguard-source") === "plugin" ? "plugin" : "api";
+  const hdr = request.headers.get("x-payeeguard-source");
+  const source = hdr === "plugin" || hdr === "demo" ? hdr : "api";
   const result = await evaluatePayment({ ...parsed.req, source });
   const receipt = await issueReceipt(result);
   return json({ ...result, receipt: { hash: receipt.hash, url: absolute(request, receipt.url) } }, 200, true);

@@ -1,19 +1,25 @@
-# PayeeGuard: Confirmation of Payee for AI agents
+# PayeeGuard: payment gate for autonomous agents
 
-PayeeGuard verifies who an AI agent is paying **before** money moves: lookalike (poisoned) addresses,
-"we changed our wallet" payee swaps, prompt-injected payment requests, brand-new wallets and unusual
-amounts. Unknown payees prove wallet ownership by signing a one-time code. Every decision gets a
-tamper-evident receipt. Agents call `POST /api/guard/check` (demo UI runs the same check on this site).
+PayeeGuard sits **beside a shopping or accounts-payable agent** acting for a user or organisation.
+Before that agent signs a transfer, it calls `POST /api/guard/check` with what it observed (payee
+name, address, amount, page/invoice text). Without a `PAY` verdict it must not pay.
+
+Trust is an **out-of-band payee directory** (onboarding), not a badge on a merchant site. A scam site
+can always self-attest; lookalikes of known brands and “we changed our wallet” swaps still **BLOCK**.
+
+**Judge path:** open [`/demo`](/demo) — left pane visualizes the agent’s journey through coffee or
+invoice flows; right pane shows PayeeGuard scoring each signal live.
 
 Built on the Superteam Agent Studio starter (modules still work; see below).
 
 | Page | What it is |
 | --- | --- |
-| `/` | Product home — coffee shop + B2B invoice demos |
-| `/shop`, `/fake-shop`, `/checkout/[genuine\|fake\|injected\|new]` | Consumer coffee storefront + attack scenarios |
-| `/invoice`, `/invoice/[genuine\|changed-details]` | Accounts-payable inbox + interactive invoice pay |
-| `/merchant/verify` | Confirmation of Payee: sign a one-time code with your wallet |
-| `/developers` | API, playground and the one-line website badge (`/payeeguard.js`) |
+| `/demo` | **Primary demo** — agent journey + PayeeGuard evaluator (coffee & invoice scenarios) |
+| `/` | Product home → links to `/demo` |
+| `/shop`, `/fake-shop`, `/checkout/[genuine\|fake\|injected\|new]` | Standalone coffee storefront + attacks |
+| `/invoice`, `/invoice/[genuine\|changed-details]` | Standalone AP inbox + invoice pay |
+| `/merchant/verify` | HOLD path: unknown payee proves wallet control (not trust for known brands) |
+| `/developers` | API, playground and embeddable badge |
 | `/receipts`, `/receipt/[hash]` | Audit trail; each receipt's id is its SHA-256 fingerprint |
 | `/setup` | Config status, wallet generator, one-click on-chain challenges |
 | `/race` | AI Race readiness (verifier hits `/agent-studio/v1/*`) |
