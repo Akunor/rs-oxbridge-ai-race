@@ -353,6 +353,31 @@ a.invoice-row:hover { border-color: var(--signal); text-decoration: none; color:
 /* ---------- Agent demo cockpit ---------- */
 .page:has(.demo-page) { max-width: 1280px; }
 .demo-page { display: flex; flex-direction: column; gap: 16px; }
+.demo-page-head { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }
+.demo-page-titles {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.95fr);
+  gap: 16px;
+  align-items: start;
+}
+.demo-page-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.demo-page-col--gate { text-align: right; align-items: flex-end; }
+.demo-page-title {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 40px);
+  line-height: 1.1;
+}
+.demo-page-desc {
+  margin: 0;
+  max-width: 36em;
+  font-size: 15px;
+}
+.demo-page-col--gate .demo-page-desc { margin-left: auto; }
+@media (max-width: 900px) {
+  .demo-page-titles { grid-template-columns: 1fr; }
+  .demo-page-col--gate { text-align: left; align-items: flex-start; }
+  .demo-page-col--gate .demo-page-desc { margin-left: 0; }
+}
 .demo-cockpit { display: flex; flex-direction: column; gap: 14px; }
 .demo-trust {
   padding: 12px 16px; border-radius: var(--radius);
@@ -430,6 +455,21 @@ a.invoice-row:hover { border-color: var(--signal); text-decoration: none; color:
 .signal-label { font: 600 10.5px var(--mono); letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
 .signal-value { font-size: 12.5px; line-height: 1.45; overflow-wrap: anywhere; max-height: 4.5em; overflow: hidden; }
 .check-reveal { animation: rise 240ms ease both; }
+
+.top-reasons {
+  margin: 0; padding: 0 0 0 1.1em; display: flex; flex-direction: column; gap: 6px;
+  font-size: 13.5px; line-height: 1.45; color: var(--ink-2);
+}
+.top-reasons li::marker { color: var(--ink); }
+
+.demo-tally {
+  display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: baseline;
+  padding: 10px 16px; border-radius: var(--radius);
+  background: var(--strip); border: 1px solid var(--hairline);
+  font: 700 14px/1.4 var(--sans); color: var(--ink); letter-spacing: -0.01em;
+}
+.demo-tally span { color: var(--ink-2); font-weight: 600; }
+.demo-tally b { color: var(--ink); font-weight: 800; }
 
 .act-banner {
   padding: 12px 14px; border-radius: 8px; font: 700 14px/1.35 var(--sans);

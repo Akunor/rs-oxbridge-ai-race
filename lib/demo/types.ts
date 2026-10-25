@@ -4,6 +4,7 @@ export type DemoScenarioId =
   | "coffee-genuine"
   | "coffee-fake"
   | "coffee-injected"
+  | "coffee-new"
   | "invoice-genuine"
   | "invoice-changed"
   | "invoice-email"
@@ -132,6 +133,7 @@ export const DEMO_SCENARIO_META: { id: DemoScenarioId; title: string; kind: Demo
   { id: "coffee-genuine", title: "Coffee · genuine", kind: "coffee" },
   { id: "coffee-fake", title: "Coffee · copycat", kind: "coffee" },
   { id: "coffee-injected", title: "Coffee · injection", kind: "coffee" },
+  { id: "coffee-new", title: "Coffee · new vendor", kind: "coffee" },
   { id: "invoice-genuine", title: "Invoice · genuine", kind: "invoice" },
   { id: "invoice-changed", title: "Invoice · changed details", kind: "invoice" },
   { id: "invoice-email", title: "Email · genuine invoice", kind: "email" },

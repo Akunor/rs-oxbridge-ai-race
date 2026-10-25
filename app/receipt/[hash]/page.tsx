@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { ExplorerLink, Module, PageHeader } from "@/components/ui";
 import { loadReceipt } from "@/lib/guard/receipt";
 
@@ -55,7 +54,6 @@ export default async function ReceiptPage({ params, searchParams }: { params: Pr
           </ul>
         </Module>
       </div>
-      <Link href="/receipts" className="small">◂ All receipts</Link>
     </>
   );
 }

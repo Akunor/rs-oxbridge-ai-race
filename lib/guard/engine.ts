@@ -46,7 +46,7 @@ export async function evaluatePayment(req: PaymentRequest, opts: EvaluateOptions
 
   if (!isSolanaAddress(request.address)) {
     checks.push({ id: "address_format", label: "Valid Solana address", status: "fail", points: POINTS.invalidAddress, detail: "This isn't a valid Solana address, so no payment can be made to it." });
-    return finish({ request, mode, checks, started, aiUsed: false });
+    return finish({ request, mode, checks, started, aiUsed: false, registeredAddress: undefined });
   }
 
   const merchants = await allMerchants();
@@ -71,7 +71,7 @@ export async function evaluatePayment(req: PaymentRequest, opts: EvaluateOptions
       label: "Not a lookalike address",
       status: "fail",
       points: POINTS.lookalike,
-      detail: `Address poisoning: this wallet starts and ends like ${imitated.name}'s (${shortAddress(imitated.address)}) but ${differing} of the characters in between are different. It is not their wallet.`,
+      detail: lookalikePunchline(request.address, imitated.address, differing, displayName(imitated.name)),
       evidence: { genuine: imitated.address, candidate: request.address, sharedPrefix: ends.prefix, sharedSuffix: ends.suffix, differing },
     });
   } else {
@@ -81,15 +81,25 @@ export async function evaluatePayment(req: PaymentRequest, opts: EvaluateOptions
   // 2. Payee match: is this the wallet registered for the business the payer thinks it's paying?
   if (claimed) {
     if (claimed.address === request.address) {
-      checks.push({ id: "payee_match", label: "Name matches wallet", status: "pass", points: 0, detail: `This is the registered wallet for ${claimed.name}.` });
+      checks.push({
+        id: "payee_match",
+        label: "Name matches wallet",
+        status: "pass",
+        points: 0,
+        detail: `This is the registered wallet for ${displayName(claimed.name)}.`,
+      });
     } else {
+      const differing = diffAddress(request.address, claimed.address).filter((d) => !d.same).length;
+      const shortSame = shortAddress(claimed.address) === shortAddress(request.address);
       checks.push({
         id: "payee_match",
         label: "Name matches wallet",
         status: "fail",
         points: POINTS.payeeMismatch,
-        detail: `You think you're paying ${claimed.name}, but their verified wallet is ${shortAddress(claimed.address)}, not ${shortAddress(request.address)}. This is the "we changed our account details" scam.`,
-        evidence: { claimedName: claimed.name, registeredAddress: claimed.address, requestedAddress: request.address },
+        detail: shortSame
+          ? `You think you're paying ${displayName(claimed.name)}, but both wallets look like ${shortAddress(claimed.address)} — ${differing} middle characters differ. This is not their wallet (classic “we changed our account details” scam).`
+          : `You think you're paying ${displayName(claimed.name)}, but their verified wallet is ${shortAddress(claimed.address)}, not ${shortAddress(request.address)}. This is the "we changed our account details" scam.`,
+        evidence: { claimedName: claimed.name, registeredAddress: claimed.address, requestedAddress: request.address, differing },
       });
     }
   } else {
@@ -103,8 +113,8 @@ export async function evaluatePayment(req: PaymentRequest, opts: EvaluateOptions
     const mismatch = request.payeeName && claimed === undefined && !looselySame(verifiedName!, request.payeeName);
     checks.push(
       mismatch
-        ? { id: "confirmation_of_payee", label: "Confirmation of Payee", status: "warn", points: POINTS.verifiedUnderOtherName, detail: `This wallet is verified, but as "${verifiedName}", not "${request.payeeName}". Check you're paying who you mean to.` }
-        : { id: "confirmation_of_payee", label: "Confirmation of Payee", status: "pass", points: 0, detail: `${verifiedName} proved it controls this wallet (${exact?.verifiedVia === "onboarding" ? "verified at onboarding" : "signed a one-time code with the wallet"}).` },
+        ? { id: "confirmation_of_payee", label: "Confirmation of Payee", status: "warn", points: POINTS.verifiedUnderOtherName, detail: `This wallet is verified, but as "${displayName(verifiedName!)}", not "${displayName(request.payeeName!)}". Check you're paying who you mean to.` }
+        : { id: "confirmation_of_payee", label: "Confirmation of Payee", status: "pass", points: 0, detail: `${displayName(verifiedName!)} proved it controls this wallet (${exact?.verifiedVia === "onboarding" ? "verified at onboarding" : "signed a one-time code with the wallet"}).` },
     );
   } else {
     checks.push({
@@ -120,14 +130,20 @@ export async function evaluatePayment(req: PaymentRequest, opts: EvaluateOptions
   if (!history) {
     checks.push({ id: "wallet_history", label: "Wallet history", status: "skip", points: 0, detail: "Couldn't read devnet right now, so wallet history wasn't checked." });
   } else if (history.transactions < 3) {
+    const newWalletDetail =
+      history.transactions === 0
+        ? "A brand-new wallet with no history. Scam wallets are usually created just before the scam."
+        : `A brand-new wallet: only ${history.transactions} transaction${history.transactions === 1 ? "" : "s"} ever. Scam wallets are usually created just before the scam.`;
     checks.push({
       id: "wallet_history",
       label: "Wallet history",
       status: verified ? "pass" : "warn",
       points: verified ? 0 : POINTS.newWallet,
       detail: verified
-        ? `A new wallet (${history.transactions} transaction${history.transactions === 1 ? "" : "s"}), but its owner is verified.`
-        : `A brand-new wallet: only ${history.transactions} transaction${history.transactions === 1 ? "" : "s"} ever. Scam wallets are usually created just before the scam.`,
+        ? history.transactions === 0
+          ? "A brand-new wallet with no history, but its owner is verified."
+          : `A new wallet (${history.transactions} transaction${history.transactions === 1 ? "" : "s"}), but its owner is verified.`
+        : newWalletDetail,
       evidence: { ...history },
     });
   } else {
@@ -215,6 +231,7 @@ export async function evaluatePayment(req: PaymentRequest, opts: EvaluateOptions
     aiUsed: findings.ai,
     matchedMerchant: matched ? view(matched, matched === exact ? verified : Boolean(matched.verifiedVia)) : undefined,
     jev: jevView,
+    registeredAddress: claimed?.address ?? imitated?.address,
   });
 }
 
@@ -226,28 +243,53 @@ function finish(p: {
   aiUsed: boolean;
   matchedMerchant?: MerchantView;
   jev?: JevSoftView;
+  registeredAddress?: string;
 }): GuardResult {
   const score = Math.min(100, p.checks.reduce((a, c) => a + c.points, 0));
   // Hard floors: lookalike / invalid address always BLOCK regardless of soft scores (Jev cannot clear).
   const hardBlock = p.checks.some((c) => c.status === "fail" && (c.id === "lookalike" || c.id === "address_format"));
   const verdict = hardBlock ? "BLOCK" : verdictFor(score);
-  const reasons = p.checks.filter((c) => c.status === "fail" || c.status === "warn");
-  const who = p.request.payeeName || shortAddress(p.request.address);
-  const headline =
+  const ranked = p.checks
+    .filter((c) => c.status === "fail" || c.status === "warn")
+    .sort((a, b) => {
+      const rank = (s: GuardCheck["status"]) => (s === "fail" ? 0 : 1);
+      const d = rank(a.status) - rank(b.status);
+      return d !== 0 ? d : b.points - a.points;
+    });
+  const topReasons =
     verdict === "PAY"
+      ? [
+          p.checks.find((c) => c.id === "confirmation_of_payee")?.detail ?? "Payee confirmed.",
+          "No signs of address poisoning or manipulation.",
+        ].slice(0, 2)
+      : ranked.slice(0, 2).map((r) => r.detail);
+
+  const who = displayName(p.request.payeeName) || shortAddress(p.request.address);
+  const injection = p.checks.find((c) => c.id === "injection" && c.status === "fail");
+  const hijacked =
+    verdict === "BLOCK" &&
+    Boolean(injection?.evidence) &&
+    p.registeredAddress &&
+    p.registeredAddress !== p.request.address &&
+    // Prefer agent-instruction injections (quotes / summary from scan) over soft pressure-only fails
+    (Boolean((injection?.evidence?.quotes as string[] | undefined)?.length) ||
+      String(injection?.detail ?? "").toLowerCase().includes("prompt injection"));
+
+  const headline = hijacked
+    ? `Agent was hijacked: tried to pay ${shortAddress(p.request.address)} instead of ${shortAddress(p.registeredAddress!)}`
+    : verdict === "PAY"
       ? `Safe to pay ${who}`
       : verdict === "HOLD"
         ? `Hold: confirm ${who} before paying`
         : `Blocked: this payment looks like fraud`;
-  const explanation =
-    verdict === "PAY"
-      ? `${p.checks.find((c) => c.id === "confirmation_of_payee")?.detail ?? ""} No signs of address poisoning or manipulation.`.trim()
-      : reasons.map((r) => r.detail).join(" ");
+
+  const explanation = topReasons.join(" ");
   return {
     verdict,
     score,
     mode: p.mode,
     headline,
+    topReasons,
     explanation,
     checks: p.checks,
     request: p.request,
@@ -257,6 +299,20 @@ function finish(p: {
     ai: { used: p.aiUsed, model: p.aiUsed ? aiModel(aiProvider()) : "rules" },
     ...(p.jev ? { jev: p.jev } : {}),
   };
+}
+
+/** Strip a trailing period so templates can append "." without "Co.." */
+function displayName(name: string | undefined): string {
+  if (!name) return "";
+  return name.trim().replace(/\.+$/, "");
+}
+
+function lookalikePunchline(candidate: string, genuine: string, differing: number, name: string): string {
+  const short = shortAddress(genuine);
+  if (shortAddress(candidate) === short) {
+    return `Address poisoning of ${name}: both look like ${short}, but ${differing} middle characters differ — this is not their wallet.`;
+  }
+  return `Address poisoning: this wallet starts and ends like ${name}'s (${short}) but ${differing} of the characters in between are different. It is not their wallet.`;
 }
 
 function sanitize(req: PaymentRequest): GuardResult["request"] {

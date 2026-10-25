@@ -16,9 +16,7 @@ const links = [
   { href: "/demo", label: "Demo" },
   { href: "/shop", label: "Coffee shop" },
   { href: "/invoice", label: "Invoices" },
-  { href: "/receipts", label: "Receipts" },
   { href: "/developers", label: "For agents" },
-  { href: "/setup", label: "Setup" },
 ];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -47,6 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/race">AI Race</Link>
               <Link href="/merchant/verify">Verify a wallet</Link>
               <Link href="/developers">API</Link>
+              <Link href="/setup">Setup</Link>
             </span>
           </div>
         </footer>

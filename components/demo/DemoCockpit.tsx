@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { loadAttestations } from "@/components/payeeguard/attestations";
 import type { CheckResultJson } from "@/components/payeeguard/VerdictCard";
 import { DEMO_SCENARIO_META, type DemoScenario, type DemoScenarioId, type ObserveKey } from "@/lib/demo/types";
 import { CoffeeSceneView } from "./CoffeeScene";
@@ -10,6 +11,13 @@ import { InvoiceSceneView } from "./InvoiceScene";
 import { SiteWindow } from "./SiteWindow";
 
 type Phase = "journey" | "checking" | "verdict" | "paid";
+
+function parseInitialId(fallback: DemoScenarioId): DemoScenarioId {
+  if (typeof window === "undefined") return fallback;
+  const q = new URLSearchParams(window.location.search).get("scenario");
+  if (q && DEMO_SCENARIO_META.some((m) => m.id === q)) return q as DemoScenarioId;
+  return fallback;
+}
 
 export function DemoCockpit({ initialId = "coffee-genuine" }: { initialId?: DemoScenarioId }) {
   const [scenarioId, setScenarioId] = useState<DemoScenarioId>(initialId);
@@ -24,8 +32,10 @@ export function DemoCockpit({ initialId = "coffee-genuine" }: { initialId?: Demo
   const [paidSignature, setPaidSignature] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [tally, setTally] = useState({ checked: 0, blocked: 0, savedUsdc: 0 });
   const playRef = useRef(false);
   const autoPayRef = useRef(false);
+  const tallyOnceRef = useRef<string | null>(null);
 
   const load = useCallback(async (id: DemoScenarioId) => {
     setLoading(true);
@@ -33,6 +43,7 @@ export function DemoCockpit({ initialId = "coffee-genuine" }: { initialId?: Demo
     setPlaying(false);
     playRef.current = false;
     autoPayRef.current = false;
+    tallyOnceRef.current = null;
     try {
       const res = await fetch(`/api/demo/scenario?id=${encodeURIComponent(id)}`, { cache: "no-store" });
       const json = await res.json();
@@ -45,6 +56,11 @@ export function DemoCockpit({ initialId = "coffee-genuine" }: { initialId?: Demo
       setResult(null);
       setRevealedCheckCount(0);
       setPaidSignature(null);
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.set("scenario", id);
+        window.history.replaceState({}, "", url.toString());
+      }
     } catch (err) {
       setError((err as Error).message);
       setScenario(null);
@@ -54,13 +70,24 @@ export function DemoCockpit({ initialId = "coffee-genuine" }: { initialId?: Demo
   }, []);
 
   useEffect(() => {
-    void load(initialId);
+    void load(parseInitialId(initialId));
   }, [initialId, load]);
 
   const applyStepReveals = useCallback((s: DemoScenario, index: number, prev: Set<ObserveKey>) => {
     const next = new Set(prev);
     for (const key of s.steps[index]?.reveal ?? []) next.add(key);
     return next;
+  }, []);
+
+  const recordTally = useCallback((checked: CheckResultJson, amountUsdc: number) => {
+    const key = `${checked.evaluatedAt}:${checked.verdict}:${checked.score}`;
+    if (tallyOnceRef.current === key) return;
+    tallyOnceRef.current = key;
+    setTally((t) => ({
+      checked: t.checked + 1,
+      blocked: t.blocked + (checked.verdict === "BLOCK" ? 1 : 0),
+      savedUsdc: Number((t.savedUsdc + (checked.verdict === "BLOCK" ? amountUsdc : 0)).toFixed(2)),
+    }));
   }, []);
 
   const pay = useCallback(async (s: DemoScenario) => {
@@ -78,6 +105,7 @@ export function DemoCockpit({ initialId = "coffee-genuine" }: { initialId?: Demo
           amountUsdc: s.checkout.amountUsdc,
           reference: `PayeeGuard order ${s.checkout.reference}`,
           messageText: s.checkout.messageText,
+          attestations: loadAttestations(),
         }),
       });
       const json = await res.json();
@@ -94,7 +122,7 @@ export function DemoCockpit({ initialId = "coffee-genuine" }: { initialId?: Demo
   }, []);
 
   const runGuard = useCallback(
-    async (s: DemoScenario) => {
+    async (s: DemoScenario, opts?: { withAttestations?: boolean }) => {
       setPhase("checking");
       setError(null);
       setResult(null);
@@ -111,6 +139,7 @@ export function DemoCockpit({ initialId = "coffee-genuine" }: { initialId?: Demo
             amountUsdc: s.checkout.amountUsdc,
             reference: `PayeeGuard order ${s.checkout.reference}`,
             messageText: s.checkout.messageText,
+            ...(opts?.withAttestations ? { attestations: loadAttestations() } : {}),
           }),
         });
         const json = await res.json();
@@ -118,6 +147,7 @@ export function DemoCockpit({ initialId = "coffee-genuine" }: { initialId?: Demo
         const checked = json as CheckResultJson;
         setResult(checked);
         setPhase("verdict");
+        recordTally(checked, s.checkout.amountUsdc);
         const total = checked.checks?.length ?? 0;
         for (let i = 1; i <= total; i++) {
           await new Promise((r) => setTimeout(r, 160));
@@ -131,7 +161,7 @@ export function DemoCockpit({ initialId = "coffee-genuine" }: { initialId?: Demo
         setPhase("journey");
       }
     },
-    [pay],
+    [pay, recordTally],
   );
 
   const advance = useCallback(async () => {
@@ -166,6 +196,7 @@ export function DemoCockpit({ initialId = "coffee-genuine" }: { initialId?: Demo
       setRevealedCheckCount(0);
       setPaidSignature(null);
       autoPayRef.current = false;
+      tallyOnceRef.current = null;
       await new Promise((r) => setTimeout(r, 200));
     }
 
@@ -207,9 +238,45 @@ export function DemoCockpit({ initialId = "coffee-genuine" }: { initialId?: Demo
     ? `Step ${stepIndex + 1}/${scenario.steps.length} · ${step?.caption ?? ""}`
     : "Loading…";
   const blocked = result?.verdict === "BLOCK" && (phase === "verdict" || phase === "paid");
+  const verifyHref =
+    scenario?.id === "coffee-new" && result?.verdict === "HOLD"
+      ? `/merchant/verify?name=${encodeURIComponent(scenario.checkout.payeeName)}&address=${encodeURIComponent(scenario.checkout.address)}&return=${encodeURIComponent(`/demo?scenario=coffee-new&fromVerify=1`)}`
+      : null;
+
+  // After returning from /merchant/verify, auto re-check with attestations once.
+  useEffect(() => {
+    if (!scenario || scenario.id !== "coffee-new" || loading) return;
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("verified") !== "1" && !loadAttestations().length) return;
+    // Only auto-recheck if we aren't mid-journey and have a prior HOLD or empty result after return
+    if (phase === "checking" || phase === "paid" || playing) return;
+    if (result?.verdict === "PAY") return;
+    const atts = loadAttestations();
+    if (!atts.length) return;
+    // Avoid infinite loop: only when returning from verify (query) or user clicked recheck
+    if (params.get("fromVerify") === "1") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("fromVerify");
+      window.history.replaceState({}, "", url.toString());
+      void runGuard(scenario, { withAttestations: true });
+    }
+  }, [scenario, loading, phase, playing, result, runGuard]);
 
   return (
     <div className={`demo-cockpit${blocked ? " demo-cockpit--blocked" : ""}`}>
+      <div className="demo-tally" aria-live="polite">
+        <span>
+          <b>{tally.checked}</b> payments checked
+        </span>
+        <span>
+          <b>{tally.blocked}</b> scams blocked
+        </span>
+        <span>
+          <b>{tally.savedUsdc.toFixed(2)}</b> USDC saved
+        </span>
+      </div>
+
       <div className="demo-trust">
         Hard gates (lookalike / directory wallet mismatch) are high confidence. Soft text and optional Jev scores add
         risk points but cannot clear a hard BLOCK. Site badges are not trust. PAY auto-completes the agent payment; BLOCK
@@ -284,6 +351,10 @@ export function DemoCockpit({ initialId = "coffee-genuine" }: { initialId?: Demo
               error={error}
               paying={paying}
               paidSignature={paidSignature}
+              verifyHref={verifyHref}
+              onRecheckAfterVerify={
+                scenario.id === "coffee-new" ? () => void runGuard(scenario, { withAttestations: true }) : undefined
+              }
             />
           ) : (
             <div className="empty">{error ?? "Select a scenario"}</div>

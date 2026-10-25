@@ -60,6 +60,8 @@ export interface GuardResult {
   /** "enforce" blocks bad payments; "advisory" only reports (used for the race verifier's test payments). */
   mode: "enforce" | "advisory";
   headline: string;
+  /** Top one–two reason lines (also joined into explanation for older clients). */
+  topReasons: string[];
   explanation: string;
   checks: GuardCheck[];
   request: Omit<PaymentRequest, "attestations">;

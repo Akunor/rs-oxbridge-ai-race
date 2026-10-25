@@ -34,9 +34,13 @@ export function VerdictCard({ result, children }: { result: CheckResultJson; chi
           </span>
           <span>PAY · HOLD · BLOCK</span>
         </div>
-        <p className="small" style={{ margin: 0 }}>
-          {result.explanation}
-        </p>
+        {(result.topReasons?.length ? result.topReasons : result.explanation ? [result.explanation] : []).length > 0 && (
+          <ul className="top-reasons">
+            {(result.topReasons?.length ? result.topReasons : [result.explanation]).map((r) => (
+              <li key={r}>{r}</li>
+            ))}
+          </ul>
+        )}
 
         {lookalike?.evidence && (
           <div className="stack" style={{ gap: 6 }}>

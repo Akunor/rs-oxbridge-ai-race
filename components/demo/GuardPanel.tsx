@@ -18,6 +18,8 @@ export function GuardPanel({
   error,
   paying,
   paidSignature,
+  verifyHref,
+  onRecheckAfterVerify,
 }: {
   expect: DemoExpect;
   revealed: Set<ObserveKey>;
@@ -28,9 +30,15 @@ export function GuardPanel({
   error: string | null;
   paying: boolean;
   paidSignature: string | null;
+  /** When set on HOLD (coffee-new), link out for Phantom proof-of-control. */
+  verifyHref?: string | null;
+  onRecheckAfterVerify?: () => void;
 }) {
   const visibleSignals = signals.filter((s) => revealed.has(s.key));
   const jev = result?.jev as JevView | undefined;
+  const injection = result?.checks.find((c) => c.id === "injection" && (c.status === "fail" || c.status === "warn"));
+  const quotes = (injection?.evidence?.quotes as string[] | undefined) ?? [];
+  const topReasons = result?.topReasons?.length ? result.topReasons : result?.explanation ? [result.explanation] : [];
 
   return (
     <section className="guard-panel" aria-label="PayeeGuard payment gate">
@@ -107,9 +115,27 @@ export function GuardPanel({
                 </div>
               </div>
               <div className="verdict-body">
-                <p className="small" style={{ margin: 0 }}>
-                  {result.explanation}
-                </p>
+                {topReasons.length > 0 && (
+                  <ul className="top-reasons">
+                    {topReasons.map((r) => (
+                      <li key={r}>{r}</li>
+                    ))}
+                  </ul>
+                )}
+
+                {quotes.length > 0 && (
+                  <div className="stack" style={{ gap: 6 }}>
+                    <span className="label">
+                      {injection?.status === "fail" ? "Hidden instructions that hijacked the agent" : "Suspicious text the agent read"}
+                    </span>
+                    {quotes.map((q) => (
+                      <blockquote key={q} className="quote">
+                        “{q}”
+                      </blockquote>
+                    ))}
+                  </div>
+                )}
+
                 <ul className="checks">
                   {result.checks.slice(0, revealedCheckCount).map((c) => (
                     <li key={c.id} className="check-reveal">
@@ -141,6 +167,23 @@ export function GuardPanel({
                 <div className="notice notice--ok">Verdict PAY · completing transfer automatically…</div>
               ) : result.verdict === "PAY" && phase === "verdict" && !paidSignature ? (
                 <div className="notice notice--ok">Verdict PAY · agent will pay without a second confirm.</div>
+              ) : result.verdict === "HOLD" && verifyHref ? (
+                <div className="stack" style={{ gap: 10 }}>
+                  <span className="small">
+                    Ask the vendor to prove wallet ownership in Phantom. After they sign, return here and re-check —
+                    then the agent can pay.
+                  </span>
+                  <div className="row">
+                    <a className="btn btn--primary" href={verifyHref}>
+                      Ask vendor to prove ownership (Phantom)
+                    </a>
+                    {onRecheckAfterVerify && (
+                      <button type="button" className="btn btn--secondary" onClick={onRecheckAfterVerify}>
+                        Re-check after verify
+                      </button>
+                    )}
+                  </div>
+                </div>
               ) : result.verdict === "HOLD" ? (
                 <span className="small">
                   Unknown payee path only. A site badge cannot clear HOLD. Known-brand lookalikes still hard-BLOCK.

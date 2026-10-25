@@ -34,7 +34,7 @@ Built on the Superteam Agent Studio starter (modules still work; see below).
 | `/invoice`, `/invoice/[genuine\|changed-details]` | Standalone AP inbox + invoice pay |
 | `/merchant/verify` | HOLD path: unknown payee proves wallet control (not trust for known brands) |
 | `/developers` | API, playground and embeddable badge |
-| `/receipts`, `/receipt/[hash]` | Audit trail; each receipt's id is its SHA-256 fingerprint |
+| `/receipt/[hash]` | Per-decision receipt (SHA-256 fingerprint; opened from the check response link) |
 | `/setup` | Config status, wallet generator, one-click on-chain challenges |
 | `/race` | AI Race readiness (verifier hits `/agent-studio/v1/*`) |
 

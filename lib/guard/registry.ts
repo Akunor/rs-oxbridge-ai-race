@@ -22,6 +22,8 @@ export interface Merchant {
 // Placeholders so the app renders before you set your own addresses (nobody holds these keys).
 const PLACEHOLDER_SHOP = "A282nnZrXnChoMn8PUhgTjHDegUoBCmYEddw4hxo6G5S";
 const PLACEHOLDER_NEW = "ESMb5yzVS7HkzMUeT7X9jcJ6XpyTa19CeawJ5kpGCHpQ";
+/** Distinct from shop/new so invoice demos never share Saigon Coffee's wallet. */
+const PLACEHOLDER_VENDOR = "4gsM2dbxYYmLCNJ8rVPXVAYtL6acXRgbJpBiqxiGyedC";
 
 function envAddress(...keys: string[]): string | null {
   for (const k of keys) {
@@ -55,12 +57,12 @@ export function newMerchant(): Merchant {
   };
 }
 
-/** Verified B2B vendor used by the accounts-payable invoice demo. */
+/** Verified B2B vendor used by the accounts-payable invoice demo. Own wallet — never falls back to the coffee shop. */
 export function vendorMerchant(): Merchant {
   return {
     id: "mekong-logistics",
     name: process.env.VENDOR_NAME || "Mekong Logistics Ltd",
-    address: envAddress("VENDOR_ADDRESS", "MERCHANT_ADDRESS", "PAY_TO_ADDRESS") ?? PLACEHOLDER_SHOP,
+    address: envAddress("VENDOR_ADDRESS") ?? PLACEHOLDER_VENDOR,
     verifiedVia: "onboarding",
     verifiedAt: "2026-09-01T00:00:00.000Z",
     typicalOrderUsdc: 0.4,
