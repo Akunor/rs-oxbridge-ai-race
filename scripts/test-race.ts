@@ -100,4 +100,7 @@ test("extractCandidateIds finds quoted and prefixed ids", () => {
   const ids = extractCandidateIds(`Look up records "REC-9a" and ORD_42 using lookup_record, then sum amounts.`);
   assert.ok(ids.includes("REC-9a"));
   assert.ok(ids.includes("ORD_42"));
+  const plain = extractCandidateIds("Use lookup_record for records alpha_1 and beta_2 then exchange_rate to USD.");
+  assert.ok(plain.includes("alpha_1"));
+  assert.ok(plain.includes("beta_2"));
 });

@@ -86,10 +86,13 @@ export async function buildUsdcTransferInstructions(signer: KeyPairSigner, trans
  * the amount is reserved against your budget first and released if the transfer doesn't land.
  */
 export async function payUsdc(signer: KeyPairSigner, transfer: UsdcTransfer, opts: { guard?: SpendGuard; rpcUrl?: string; timeoutMs?: number } = {}): Promise<{ signature: string }> {
+  const rpcUrl = opts.rpcUrl ?? process.env.SOLANA_RPC_URL ?? DEFAULT_RPC;
+  const rpc = createSolanaRpc(rpcUrl);
+  await assertAgentFunded(rpc, signer, transfer.amountUsdc);
+
   const instructions = await buildUsdcTransferInstructions(signer, transfer);
   const reservation = opts.guard?.tryReserve(usdcToMicros(transfer.amountUsdc));
   if (reservation && !reservation.ok) throw new TransferError(`Payment blocked by your spending limits: ${reservation.reason}`);
-  const rpc = createSolanaRpc(opts.rpcUrl ?? process.env.SOLANA_RPC_URL ?? DEFAULT_RPC);
   try {
     const { value: blockhash } = await rpc.getLatestBlockhash({ commitment: "confirmed" }).send();
     const message = pipe(
@@ -118,13 +121,53 @@ export async function payUsdc(signer: KeyPairSigner, transfer: UsdcTransfer, opt
   }
 }
 
+/** Fail fast with a clear message when the agent wallet can't pay (common race failure). */
+async function assertAgentFunded(rpc: ReturnType<typeof createSolanaRpc>, signer: KeyPairSigner, amountUsdc: number): Promise<void> {
+  const { value: solLamports } = await rpc.getBalance(signer.address).send();
+  if (solLamports === 0n) {
+    throw new TransferError(
+      `Agent wallet ${signer.address} has 0 SOL on devnet (needed for fees). Fund it at https://faucet.solana.com then re-run.`,
+    );
+  }
+  const mint = address(USDC_DEVNET_MINT);
+  const { value: tokenAccounts } = await rpc
+    .getTokenAccountsByOwner(signer.address, { mint }, { encoding: "jsonParsed" })
+    .send();
+  if (tokenAccounts.length === 0) {
+    throw new TransferError(
+      `Agent wallet ${signer.address} has no devnet USDC token account. Send it USDC from https://faucet.circle.com (Solana Devnet), then check with "npm run wallets".`,
+    );
+  }
+  const parsed = tokenAccounts[0].account.data as {
+    parsed?: { info?: { tokenAmount?: { uiAmountString?: string; uiAmount?: number | null } } };
+  };
+  const ui = Number(parsed.parsed?.info?.tokenAmount?.uiAmountString ?? parsed.parsed?.info?.tokenAmount?.uiAmount ?? NaN);
+  if (!Number.isFinite(ui) || ui + 1e-9 < amountUsdc) {
+    throw new TransferError(
+      `Agent wallet ${signer.address} has ${ui} devnet USDC but needs at least ${amountUsdc}. Top up at https://faucet.circle.com (Solana Devnet).`,
+    );
+  }
+}
+
 /** Turns an RPC or simulation failure into a message that says what to do. */
 function explain(err: unknown): string {
-  const e = err as { message?: string; cause?: { message?: string }; context?: { logs?: string[] } };
+  const e = err as {
+    message?: string;
+    cause?: { message?: string };
+    context?: { logs?: string[]; __code?: number; code?: number; accounts?: unknown };
+    code?: number;
+  };
   const logs = e.context?.logs ?? [];
-  const detail = [e.message, e.cause?.message, ...logs.slice(-3)].filter(Boolean).join(" · ");
-  if (/no record of a prior credit/i.test(detail)) return `${detail} (the agent wallet has no devnet SOL for fees: get some at faucet.solana.com, then check with "npm run wallets")`;
-  if (/insufficient funds|custom program error: 0x1\b/i.test(detail)) return `${detail} (the agent wallet doesn't have enough devnet USDC: get some at faucet.circle.com (Solana Devnet), then check with "npm run wallets")`;
-  if (/could not find account|InvalidAccountData|AccountNotFound/i.test(detail)) return `${detail} (the agent wallet has no devnet USDC yet: get some at faucet.circle.com (Solana Devnet), then check with "npm run wallets")`;
+  const code = e.context?.__code ?? e.context?.code ?? e.code;
+  const detail = [e.message, e.cause?.message, code != null ? `rpc=${code}` : "", ...logs.slice(-3)].filter(Boolean).join(" · ");
+  if (/no record of a prior credit/i.test(detail)) {
+    return `${detail} (the agent wallet has no devnet SOL for fees: get some at faucet.solana.com, then check with "npm run wallets")`;
+  }
+  if (/insufficient funds|custom program error: 0x1\b/i.test(detail)) {
+    return `${detail} (the agent wallet doesn't have enough devnet USDC: get some at faucet.circle.com (Solana Devnet), then check with "npm run wallets")`;
+  }
+  if (/could not find account|InvalidAccountData|AccountNotFound|-32002|accounts=/i.test(detail) || code === -32002) {
+    return `${detail} (usually the agent wallet has no funded devnet USDC account, or the RPC rejected preflight. Fund USDC at faucet.circle.com (Solana Devnet) and SOL at faucet.solana.com, then "npm run wallets")`;
+  }
   return detail || "The transfer failed.";
 }
