@@ -3,7 +3,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { handleHealth, handleTask } from "../lib/race/adapter";
-import { handlers } from "../lib/race/handlers";
+import { extractCandidateIds } from "../lib/race/agent";
+import { handlers, parsePaymentInstruction } from "../lib/race/handlers";
 import { TaskError } from "../lib/race/protocol";
 import { createMemory } from "../lib/race/memory";
 
@@ -87,4 +88,16 @@ test("memory uses Upstash Redis when its env vars are set", async () => {
   assert.equal(calls[0].url, "https://eu1.upstash.io/pipeline");
   assert.deepEqual((calls[0].body as unknown[][]).map((c) => c[0]), ["RPUSH", "LTRIM", "EXPIRE"]);
   assert.deepEqual(calls[1].body, ["LRANGE", "race:memory:s1", 0, -1]);
+});
+
+test("parsePaymentInstruction reads amount, address and memo", () => {
+  const to = "A282nnZrXnChoMn8PUhgTjHDegUoBCmYEddw4hxo6G5S";
+  const parsed = parsePaymentInstruction(`Pay 0.01 devnet USDC to ${to} with the memo "race-try-abc123"`);
+  assert.deepEqual(parsed, { to, amountUsdc: 0.01, memo: "race-try-abc123" });
+});
+
+test("extractCandidateIds finds quoted and prefixed ids", () => {
+  const ids = extractCandidateIds(`Look up records "REC-9a" and ORD_42 using lookup_record, then sum amounts.`);
+  assert.ok(ids.includes("REC-9a"));
+  assert.ok(ids.includes("ORD_42"));
 });
