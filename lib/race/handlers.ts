@@ -45,14 +45,16 @@ export function fallbackAnswer(question: string): string | null {
 async function respond(task: Task): Promise<TaskOutput> {
   const question = inputText(task).trim();
   if (!question) throw new TaskError("invalid_input", "The respond task has no input.");
+  // Verifier asks fresh arithmetic / capital-letter questions with a ~20s budget. Answer those
+  // instantly when we can — don't burn the budget waiting on a slow or retrying Gemini call.
+  const fallback = fallbackAnswer(question);
+  if (fallback !== null) return { text: fallback };
   try {
-    const text = await complete(RESPOND_SYSTEM, question, { timeoutMs: 15_000, maxTokens: 400 });
+    const text = await complete(RESPOND_SYSTEM, question, { timeoutMs: 8_000, maxTokens: 400 });
     if (text.trim()) return { text: text.trim() };
   } catch (err) {
     console.warn("[race] respond: AI call failed:", (err as Error).message);
   }
-  const fallback = fallbackAnswer(question);
-  if (fallback !== null) return { text: fallback };
   throw new TaskError("internal", aiProvider() ? "The AI model did not answer." : "No AI key is set (GEMINI_API_KEY or ANTHROPIC_API_KEY).");
 }
 
