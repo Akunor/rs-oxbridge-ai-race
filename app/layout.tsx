@@ -7,9 +7,9 @@ const FONTS =
   "https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap";
 
 export const metadata: Metadata = {
-  title: "PayeeGuard · Payment gate for autonomous agents",
+  title: "PayeeGuard · Confirmation of Payee for AI agents",
   description:
-    "PayeeGuard sits beside a shopping or AP agent and decides whether it may pay: lookalike wallets, payee swaps, and prompt-injected requests.",
+    "AI agents can now send money. Nobody checks who they're paying. PayeeGuard is Confirmation of Payee for agents — block lookalike wallets and diverted payments before the agent signs.",
 };
 
 const links = [
