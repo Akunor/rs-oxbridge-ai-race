@@ -55,6 +55,19 @@ export function newMerchant(): Merchant {
   };
 }
 
+/** Verified B2B vendor used by the accounts-payable invoice demo. */
+export function vendorMerchant(): Merchant {
+  return {
+    id: "mekong-logistics",
+    name: process.env.VENDOR_NAME || "Mekong Logistics Ltd",
+    address: envAddress("VENDOR_ADDRESS", "MERCHANT_ADDRESS", "PAY_TO_ADDRESS") ?? PLACEHOLDER_SHOP,
+    verifiedVia: "onboarding",
+    verifiedAt: "2026-09-01T00:00:00.000Z",
+    typicalOrderUsdc: 0.4,
+    aliases: ["mekong logistics", "mekong logistics limited"],
+  };
+}
+
 export const merchantConfigured = () => ({ shop: !!envAddress("MERCHANT_ADDRESS", "PAY_TO_ADDRESS"), newShop: !!envAddress("NEW_MERCHANT_ADDRESS") });
 
 const VERIFIED_KEY = (address: string) => `pg:verified:${address}`;
@@ -72,7 +85,7 @@ export async function verifiedRecord(address: string): Promise<{ name: string; a
 
 /** Everyone in the directory, with wallet-signature verifications merged in. */
 export async function allMerchants(): Promise<Merchant[]> {
-  const base = [shopMerchant(), newMerchant()];
+  const base = [shopMerchant(), newMerchant(), vendorMerchant()];
   const verified = await kvList<{ name: string; address: string; verifiedAt: string }>(VERIFIED_LIST, 100);
   for (const v of verified) {
     const existing = base.find((m) => m.address === v.address);

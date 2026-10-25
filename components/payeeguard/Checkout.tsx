@@ -31,14 +31,25 @@ export function PayeeGuardCheckout({ payeeName, address, amountUsdc, item, pageT
   const [error, setError] = useState<string | null>(null);
 
   const body = () =>
-    JSON.stringify({ payeeName, address, amountUsdc, reference: `PayeeGuard order ${reference}`, messageText: pageText, attestations: loadAttestations() });
+    JSON.stringify({
+      payeeName,
+      address,
+      amountUsdc,
+      reference: `PayeeGuard order ${reference}`,
+      messageText: pageText,
+      attestations: loadAttestations(),
+    });
 
   async function check() {
     setPhase("checking");
     setError(null);
     setPayment(null);
     try {
-      const res = await fetch("/api/guard/check", { method: "POST", headers: { "content-type": "application/json", "x-payeeguard-source": "plugin" }, body: body() });
+      const res = await fetch("/api/guard/check", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-payeeguard-source": "plugin" },
+        body: body(),
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error?.message ?? `Check failed (${res.status})`);
       setResult(json);
@@ -73,50 +84,66 @@ export function PayeeGuardCheckout({ payeeName, address, amountUsdc, item, pageT
   const verifyHref = `/merchant/verify?name=${encodeURIComponent(payeeName)}&address=${encodeURIComponent(address)}&return=${encodeURIComponent(returnTo)}`;
 
   return (
-    <section className="module">
+    <section className="module plugin-shell agent-pane">
       <div className="module-strip">
-        <span>🛡 PayeeGuard · checkout plugin</span>
-        <span>Order {reference}</span>
+        <span>PayeeGuard · checkout plugin</span>
+        <span>Ref {reference}</span>
       </div>
       <div className="module-body">
         <dl className="kv">
           <dt>Paying</dt>
           <dd>{payeeName}</dd>
           <dt>To wallet</dt>
-          <dd>{address}</dd>
+          <dd className="mono">{address}</dd>
           <dt>Amount</dt>
-          <dd>{amountUsdc} USDC (devnet) · {item}</dd>
+          <dd>
+            {amountUsdc} USDC (devnet) · {item}
+          </dd>
         </dl>
 
         {phase === "idle" && (
-          <div className="row">
-            <button className="btn btn--primary" onClick={check}>Let my AI agent pay safely ▸</button>
+          <div className="stack" style={{ gap: 10 }}>
+            <button className="btn btn--primary" onClick={check}>
+              Let my AI agent pay safely
+            </button>
             <span className="small muted">PayeeGuard checks who you&apos;re paying first. Nothing moves until it says PAY.</span>
           </div>
         )}
-        {phase === "checking" && <div className="notice">🛡 Checking the payee: lookalike addresses, Confirmation of Payee, wallet history, hidden instructions…</div>}
+        {phase === "checking" && (
+          <div className="notice">Checking the payee: lookalike addresses, Confirmation of Payee, wallet history, hidden instructions…</div>
+        )}
         {error && <div className="notice notice--fault">{error}</div>}
 
         {result && phase !== "checking" && (
           <VerdictCard result={result}>
             {phase === "paid" && payment?.signature ? (
               <div className="notice notice--ok">
-                ✓ Paid {amountUsdc} USDC on Solana devnet. Transaction <ExplorerLink signature={payment.signature} />
+                Paid {amountUsdc} USDC on Solana devnet. Transaction <ExplorerLink signature={payment.signature} />
               </div>
             ) : result.verdict === "PAY" ? (
               <div className="row">
-                <button className="btn btn--primary" onClick={pay} disabled={phase === "paying"}>{phase === "paying" ? "Agent is paying…" : `Agent pays ${amountUsdc} USDC ▸`}</button>
-                <button className="btn-tool" onClick={check} disabled={phase === "paying"}>Re-check</button>
+                <button className="btn btn--primary" onClick={pay} disabled={phase === "paying"}>
+                  {phase === "paying" ? "Agent is paying…" : `Agent pays ${amountUsdc} USDC`}
+                </button>
+                <button className="btn-tool" onClick={check} disabled={phase === "paying"}>
+                  Re-check
+                </button>
               </div>
             ) : result.verdict === "HOLD" ? (
               <div className="row">
-                <a className="btn btn--secondary" href={verifyHref}>Ask {payeeName} to prove wallet ownership ▸</a>
-                <button className="btn-tool" onClick={check}>Re-check</button>
+                <a className="btn btn--secondary" href={verifyHref}>
+                  Ask {payeeName} to prove wallet ownership
+                </a>
+                <button className="btn-tool" onClick={check}>
+                  Re-check
+                </button>
               </div>
             ) : (
               <div className="row">
                 <span className="tag tag--fault">Payment stopped. No money moved.</span>
-                <button className="btn-tool" onClick={check}>Re-check</button>
+                <button className="btn-tool" onClick={check}>
+                  Re-check
+                </button>
               </div>
             )}
           </VerdictCard>

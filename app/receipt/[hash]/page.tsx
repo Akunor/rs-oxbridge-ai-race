@@ -25,8 +25,8 @@ export default async function ReceiptPage({ params, searchParams }: { params: Pr
       <PageHeader eyebrow={`PayeeGuard receipt · ${r.kind}`} title={r.headline} />
       <div className={`notice ${intact ? "notice--ok" : "notice--fault"}`}>
         {intact
-          ? "✓ Intact. This receipt's SHA-256 fingerprint matches its contents, so nothing has been changed since PayeeGuard issued it."
-          : "✕ Tampered. The contents no longer match the fingerprint. Someone edited this receipt after it was issued."}
+          ? "Intact. This receipt's SHA-256 fingerprint matches its contents, so nothing has been changed since PayeeGuard issued it."
+          : "Tampered. The contents no longer match the fingerprint. Someone edited this receipt after it was issued."}
       </div>
       <div className="cols">
         <Module label="Decision" right={<span className={`tag ${TAG[r.verdict]}`}>{r.verdict}</span>}>

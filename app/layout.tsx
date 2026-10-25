@@ -1,30 +1,24 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Nav } from "@/components/Nav";
-import { modules } from "@/lib/modules";
 import "./globals.css";
 
-// Fonts load in the browser from Google Fonts, so building needs no network. Archivo's width
-// axis (62–125) gives the wide headings. Swap the link and the --sans/--mono tokens in globals.css to restyle.
 const FONTS =
-  "https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=Martian+Mono:wght@400;500;600&display=swap";
+  "https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap";
 
 export const metadata: Metadata = {
-  title: "PayeeGuard · Confirmation of Payee for AI agents",
-  description: "PayeeGuard checks who an AI agent is paying before money moves: address poisoning, payee swaps and prompt-injected payment requests.",
+  title: "PayeeGuard · Verify the payee before an agent pays",
+  description:
+    "PayeeGuard checks who an AI agent is paying before money moves: address poisoning, payee swaps and prompt-injected payment requests.",
 };
 
-// PayeeGuard pages first, then every page from the starter's modules.
 const links = [
-  { href: "/", label: "How it works" },
-  { href: "/shop", label: "Demo shop" },
-  { href: "/merchant/verify", label: "Verify a wallet" },
-  { href: "/developers", label: "For agents" },
+  { href: "/shop", label: "Coffee shop" },
+  { href: "/invoice", label: "Invoices" },
   { href: "/receipts", label: "Receipts" },
+  { href: "/developers", label: "For agents" },
   { href: "/setup", label: "Setup" },
-  ...modules.filter((m) => m.href).map((m) => ({ href: m.href!, label: m.name })),
 ];
-const usesPayments = modules.some((m) => m.id === "payments");
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -38,8 +32,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <header className="header">
           <div className="header-inner">
             <Link href="/" className="wordmark">
-              <b>🛡 PAYEEGUARD</b>
-              <span>made with Agent Studio</span>
+              <b>PayeeGuard</b>
+              <span>confirmation of payee</span>
             </Link>
             <Nav links={links} />
           </div>
@@ -47,9 +41,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main className="page">{children}</main>
         <footer className="footer">
           <div className="footer-inner">
-            <span>{usesPayments ? "SOLANA DEVNET · TEST MONEY ONLY" : "STARTER PROJECT"}</span>
-            <span>
-              PAYEEGUARD · CONFIRMATION OF PAYEE FOR AI AGENTS
+            <span>Solana devnet · test money only</span>
+            <span className="footer-links">
+              <Link href="/race">AI Race</Link>
+              <Link href="/merchant/verify">Verify a wallet</Link>
+              <Link href="/developers">API</Link>
             </span>
           </div>
         </footer>

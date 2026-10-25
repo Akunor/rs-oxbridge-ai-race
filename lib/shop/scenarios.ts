@@ -8,18 +8,21 @@ import { newMerchant, shopMerchant } from "@/lib/guard/registry";
 export interface Product {
   id: string;
   name: string;
-  emoji: string;
+  /** Short label shown on the product art tile. */
+  artLabel: string;
+  /** Optional CSS modifier for product art (e.g. art--phin). */
+  artTone?: string;
   description: string;
   priceUsdc: number;
 }
 
 export const PRODUCTS: Product[] = [
-  { id: "robusta", name: "Đà Lạt Robusta beans, 250 g", emoji: "☕", description: "Dark roast from the Central Highlands. Chocolate, a little smoke, strong enough for cà phê sữa đá.", priceUsdc: 0.03 },
-  { id: "phin", name: "Phin filter set", emoji: "🫖", description: "Stainless steel phin with a ceramic cup. Slow-drip Vietnamese coffee at home.", priceUsdc: 0.05 },
-  { id: "coldbrew", name: "Cold brew kit", emoji: "🧊", description: "Coarse-ground Arabica, two filter bags and a recipe card. Twelve hours to perfection.", priceUsdc: 0.08 },
+  { id: "robusta", name: "Đà Lạt Robusta beans, 250 g", artLabel: "Robusta", description: "Dark roast from the Central Highlands. Chocolate, a little smoke, strong enough for cà phê sữa đá.", priceUsdc: 0.03 },
+  { id: "phin", name: "Phin filter set", artLabel: "Phin", artTone: "art--phin", description: "Stainless steel phin with a ceramic cup. Slow-drip Vietnamese coffee at home.", priceUsdc: 0.05 },
+  { id: "coldbrew", name: "Cold brew kit", artLabel: "Cold brew", artTone: "art--cold", description: "Coarse-ground Arabica, two filter bags and a recipe card. Twelve hours to perfection.", priceUsdc: 0.08 },
 ];
 
-export const TEA: Product = { id: "lotus-tea", name: "West Lake lotus tea, 100 g", emoji: "🍵", description: "Green tea scented with lotus flowers, packed by hand in Hanoi.", priceUsdc: 0.04 };
+export const TEA: Product = { id: "lotus-tea", name: "West Lake lotus tea, 100 g", artLabel: "Lotus tea", artTone: "art--tea", description: "Green tea scented with lotus flowers, packed by hand in Hanoi.", priceUsdc: 0.04 };
 
 export type Scenario = "genuine" | "fake" | "injected" | "new";
 
