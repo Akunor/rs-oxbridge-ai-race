@@ -42,16 +42,25 @@ function requireProvider(): Provider {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** POST JSON with retries on rate limits and server hiccups. */
+/** POST JSON with retries on rate limits and server hiccups. `timeoutMs` is a hard budget for all attempts combined. */
 async function postJson(url: string, headers: Record<string, string>, body: unknown, timeoutMs: number): Promise<Record<string, unknown>> {
+  const deadline = Date.now() + timeoutMs;
   let last = "";
   for (let attempt = 0; attempt < 4; attempt++) {
+    const remaining = deadline - Date.now();
+    if (remaining < 250) break;
     try {
-      const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs) });
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json", ...headers },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(remaining),
+      });
       const text = await res.text();
       if (res.status === 429 || res.status >= 500) {
         last = `AI provider returned ${res.status}: ${text.slice(0, 200)}`;
-        await sleep(700 * (attempt + 1));
+        const wait = Math.min(700 * (attempt + 1), deadline - Date.now() - 100);
+        if (wait > 0) await sleep(wait);
         continue;
       }
       if (!res.ok) throw new AiConfigError(`AI provider returned ${res.status}: ${text.slice(0, 300)}`);
@@ -59,7 +68,8 @@ async function postJson(url: string, headers: Record<string, string>, body: unkn
     } catch (err) {
       if (err instanceof AiConfigError) throw err;
       last = (err as Error).message;
-      await sleep(700 * (attempt + 1));
+      const wait = Math.min(400 * (attempt + 1), deadline - Date.now() - 100);
+      if (wait > 0) await sleep(wait);
     }
   }
   throw new Error(last || "AI provider did not answer");
