@@ -1,19 +1,22 @@
 # PayeeGuard: Confirmation of Payee for AI agents
 
-Built on the Superteam Agent Studio starter below (every starter module is still here and works).
-PayeeGuard checks who an AI agent is paying before money moves: lookalike (poisoned) addresses,
-"we changed our wallet" payee swaps, prompt-injected payment requests, brand-new wallets and
-unusual amounts. Unknown payees prove they own their wallet by signing a one-time code, and every
-decision gets a tamper-evident receipt. Any agent can call it at `POST /api/guard/check`.
+PayeeGuard verifies who an AI agent is paying **before** money moves: lookalike (poisoned) addresses,
+"we changed our wallet" payee swaps, prompt-injected payment requests, brand-new wallets and unusual
+amounts. Unknown payees prove wallet ownership by signing a one-time code. Every decision gets a
+tamper-evident receipt. Agents call `POST /api/guard/check` (demo UI runs the same check on this site).
+
+Built on the Superteam Agent Studio starter (modules still work; see below).
 
 | Page | What it is |
 | --- | --- |
-| `/` | How it works + the four demo checkouts |
-| `/shop`, `/fake-shop`, `/checkout/[genuine\|fake\|injected\|new]` | Demo shop with the PayeeGuard checkout plugin |
+| `/` | Product home — coffee shop + B2B invoice demos |
+| `/shop`, `/fake-shop`, `/checkout/[genuine\|fake\|injected\|new]` | Consumer coffee storefront + attack scenarios |
+| `/invoice`, `/invoice/[genuine\|changed-details]` | Accounts-payable inbox + interactive invoice pay |
 | `/merchant/verify` | Confirmation of Payee: sign a one-time code with your wallet |
 | `/developers` | API, playground and the one-line website badge (`/payeeguard.js`) |
 | `/receipts`, `/receipt/[hash]` | Audit trail; each receipt's id is its SHA-256 fingerprint |
 | `/setup` | Config status, wallet generator, one-click on-chain challenges |
+| `/race` | AI Race readiness (verifier hits `/agent-studio/v1/*`) |
 
 | Race step | Where |
 | --- | --- |

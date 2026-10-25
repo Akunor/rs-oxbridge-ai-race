@@ -1,12 +1,21 @@
 import type { ReactNode } from "react";
 
-// Small building blocks for the Agent Studio look (styles live in app/globals.css).
-// Reuse them in your own pages, or delete this file and bring your own design.
-
-/** A bordered panel with a labelled header strip, e.g. <Module label="A · Prompt">…</Module>. */
-export function Module({ label, right, variant, children }: { label: ReactNode; right?: ReactNode; variant?: "diagram" | "inverse"; children: ReactNode }) {
+/** Bordered panel with a labelled header strip. */
+export function Module({
+  label,
+  right,
+  variant,
+  children,
+  className,
+}: {
+  label: ReactNode;
+  right?: ReactNode;
+  variant?: "diagram" | "inverse";
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <section className={`module${variant ? ` module--${variant}` : ""}`}>
+    <section className={`module${variant ? ` module--${variant}` : ""}${className ? ` ${className}` : ""}`}>
       <div className="module-strip">
         <span>{label}</span>
         {right !== undefined && <span>{right}</span>}
@@ -16,15 +25,25 @@ export function Module({ label, right, variant, children }: { label: ReactNode; 
   );
 }
 
-/** A square status light. Decorative: always pair it with text. */
+/** Status light. Decorative: always pair with text. */
 export function Led({ tone, blink }: { tone?: "signal" | "ok" | "fault"; blink?: boolean }) {
   return <span aria-hidden="true" className={`led${tone ? ` led--${tone}` : ""}${blink ? " led--blink" : ""}`} />;
 }
 
-/** The page heading block: a small mono label, a big title and an optional intro. */
-export function PageHeader({ eyebrow, title, children }: { eyebrow: string; title: ReactNode; children?: ReactNode }) {
+/** Page heading: eyebrow, display title, optional lead. */
+export function PageHeader({
+  eyebrow,
+  title,
+  children,
+  className,
+}: {
+  eyebrow: string;
+  title: ReactNode;
+  children?: ReactNode;
+  className?: string;
+}) {
   return (
-    <header className="stack" style={{ marginBottom: 8 }}>
+    <header className={`stack${className ? ` ${className}` : ""}`} style={{ marginBottom: 4, gap: 10 }}>
       <span className="eyebrow">{eyebrow}</span>
       <h1 className="display">{title}</h1>
       {children && <p className="lead">{children}</p>}
@@ -32,7 +51,7 @@ export function PageHeader({ eyebrow, title, children }: { eyebrow: string; titl
   );
 }
 
-/** A 20-cell meter: purple = spent, green = still available. */
+/** 20-cell budget meter. */
 export function Meter({ spent, total, label }: { spent: number; total: number; label: string }) {
   const spentCells = total > 0 ? Math.min(20, Math.round((spent / total) * 20)) : 0;
   return (
@@ -44,7 +63,7 @@ export function Meter({ spent, total, label }: { spent: number; total: number; l
   );
 }
 
-/** Links a Solana devnet transaction signature to the public explorer. */
+/** Links a Solana devnet transaction signature to the explorer. */
 export function ExplorerLink({ signature }: { signature: string }) {
   return (
     <a href={`https://explorer.solana.com/tx/${signature}?cluster=devnet`} target="_blank" rel="noopener noreferrer">

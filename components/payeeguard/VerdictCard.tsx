@@ -5,7 +5,7 @@ import { diffAddress } from "@/lib/guard/address";
 import type { GuardCheck, GuardResult } from "@/lib/guard/types";
 
 const ICON: Record<GuardCheck["status"], string> = { pass: "✓", warn: "!", fail: "✕", skip: "–" };
-const BADGE: Record<GuardResult["verdict"], string> = { PAY: "✓ SAFE TO PAY", HOLD: "⏸ HOLD", BLOCK: "⛔ BLOCKED" };
+const BADGE: Record<GuardResult["verdict"], string> = { PAY: "SAFE TO PAY", HOLD: "HOLD", BLOCK: "BLOCKED" };
 
 export type CheckResultJson = GuardResult & { receipt?: { hash: string; url: string } };
 
@@ -21,7 +21,8 @@ export function VerdictCard({ result, children }: { result: CheckResultJson; chi
         <div className="stack" style={{ gap: 4 }}>
           <span className="verdict-title">{result.headline}</span>
           <span className="small muted">
-            {result.mode === "advisory" ? "Advisory mode · " : ""}Checked in {(result.ms / 1000).toFixed(1)}s · {result.ai.used ? `rules + AI (${result.ai.model})` : "rules"}
+            {result.mode === "advisory" ? "Advisory mode · " : ""}Checked in {(result.ms / 1000).toFixed(1)}s ·{" "}
+            {result.ai.used ? `rules + AI (${result.ai.model})` : "rules"}
           </span>
         </div>
       </div>
@@ -33,7 +34,9 @@ export function VerdictCard({ result, children }: { result: CheckResultJson; chi
           </span>
           <span>PAY · HOLD · BLOCK</span>
         </div>
-        <p className="small" style={{ margin: 0 }}>{result.explanation}</p>
+        <p className="small" style={{ margin: 0 }}>
+          {result.explanation}
+        </p>
 
         {lookalike?.evidence && (
           <div className="stack" style={{ gap: 6 }}>
@@ -46,7 +49,9 @@ export function VerdictCard({ result, children }: { result: CheckResultJson; chi
           <div className="stack" style={{ gap: 6 }}>
             <span className="label">Suspicious text the agent read</span>
             {quotes.map((q) => (
-              <blockquote key={q} className="quote">“{q}”</blockquote>
+              <blockquote key={q} className="quote">
+                “{q}”
+              </blockquote>
             ))}
           </div>
         )}
@@ -54,7 +59,9 @@ export function VerdictCard({ result, children }: { result: CheckResultJson; chi
         <ul className="checks">
           {result.checks.map((c) => (
             <li key={c.id}>
-              <span className={`ic ic--${c.status}`} aria-label={c.status}>{ICON[c.status]}</span>
+              <span className={`ic ic--${c.status}`} aria-label={c.status}>
+                {ICON[c.status]}
+              </span>
               <span>
                 <b>{c.label}</b>
                 <span className="muted">{c.detail}</span>
@@ -68,7 +75,11 @@ export function VerdictCard({ result, children }: { result: CheckResultJson; chi
 
         {result.receipt && (
           <span className="small muted">
-            Receipt <a href={result.receipt.url} target="_blank" rel="noopener noreferrer" className="mono">{result.receipt.hash.slice(0, 16)}…</a> · tamper-evident record of this decision
+            Receipt{" "}
+            <a href={result.receipt.url} target="_blank" rel="noopener noreferrer" className="mono">
+              {result.receipt.hash.slice(0, 16)}…
+            </a>{" "}
+            · tamper-evident record of this decision
           </span>
         )}
       </div>
@@ -80,13 +91,19 @@ export function AddressDiff({ candidate, genuine }: { candidate: string; genuine
   return (
     <div className="stack" style={{ gap: 4 }}>
       <div className="addr-diff" aria-label={`Requested address ${candidate}`}>
-        <span className="label" style={{ display: "block" }}>Requested</span>
+        <span className="label" style={{ display: "block" }}>
+          Requested
+        </span>
         {diffAddress(candidate, genuine).map((d, i) => (
-          <span key={i} className={d.same ? "good" : "bad"}>{d.char}</span>
+          <span key={i} className={d.same ? "good" : "bad"}>
+            {d.char}
+          </span>
         ))}
       </div>
       <div className="addr-diff" aria-label={`Verified address ${genuine}`}>
-        <span className="label" style={{ display: "block" }}>Verified</span>
+        <span className="label" style={{ display: "block" }}>
+          Verified
+        </span>
         {genuine}
       </div>
     </div>
